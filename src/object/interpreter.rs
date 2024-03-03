@@ -1,7 +1,6 @@
 use super::{Context, Message};
 use super::{Object, ObjectBox};
 use super::bytecode::{ByteCode, SpecialInstruction};
-use super::bytecode::ByteCodeObject;
 use super::stack::Stack;
 use super::Method;
 use super::block::Block;
@@ -17,23 +16,19 @@ impl Interpreter {
         Self { stack }
     }
 
-    pub fn run(&mut self, context: &mut Context, bytecode: ObjectBox<dyn Object>) -> bool {
-        let bytecode = bytecode.borrow();
-        let bytecode = bytecode.downcast_ref::<ByteCodeObject>();
-        if let Some(bytecode) = bytecode {
-            match &bytecode.data {
-                ByteCode::Halt => return false,
-                ByteCode::NoOp => {}
-                ByteCode::AccessField(index) => self.access_field(*index),
-                ByteCode::AccessTemp(index) => self.access_temp(*index, context),
-                ByteCode::PushLiteral(literal) => self.push_literal(literal.clone()),
-                ByteCode::StoreField(index) => self.store_field(*index),
-                ByteCode::StoreTemp(index) => self.store_temp(*index, context),
-                ByteCode::SendMsg(arg, msg_index) => self.send_msg(*arg, *msg_index, context),
-                ByteCode::SendSuperMsg(arg, msg_index) => self.send_super_msg(*arg, *msg_index, context),
-                ByteCode::SpecialInstruction(instruction) => return self.special_instruction(instruction),
-                _ => unimplemented!()
-            }
+    pub fn run(&mut self, context: &mut Context, bytecode: ByteCode) -> bool {
+        match bytecode {
+            ByteCode::Halt => return false,
+            ByteCode::NoOp => {}
+            ByteCode::AccessField(index) => self.access_field(index),
+            ByteCode::AccessTemp(index) => self.access_temp(index, context),
+            ByteCode::PushLiteral(literal) => self.push_literal(literal),
+            ByteCode::StoreField(index) => self.store_field(index),
+            ByteCode::StoreTemp(index) => self.store_temp(index, context),
+            ByteCode::SendMsg(arg, msg_index) => self.send_msg(arg, msg_index, context),
+            ByteCode::SendSuperMsg(arg, msg_index) => self.send_super_msg(arg, msg_index, context),
+            ByteCode::SpecialInstruction(instruction) => return self.special_instruction(instruction),
+            _ => unimplemented!()
         }
         true
     }
@@ -93,7 +88,7 @@ impl Interpreter {
         context.arguments[index] = value;
     }
 
-    fn send_msg(&mut self, arg: usize, msg_index: usize, context: &mut Context) {
+    fn send_msg(&mut self, arg: usize, msg_index: String, context: &mut Context) {
         let stack = self.stack.clone();
         let mut stack = stack.borrow_mut();
         let stack = stack.downcast_mut::<Stack>().expect("Expected Stack");
@@ -109,14 +104,14 @@ impl Interpreter {
         let borrowed_object = object.borrow();
 
         let message_class = context.get_class("Message").expect("Expected Message class").clone();
-        let message = Message::make_object(*message_class, context.create_base_object(), msg_index);
+        let message = Message::make_object(message_class, context.create_base_object(), msg_index);
 
         let method = borrowed_object.process_message(message);
         drop(borrowed_object);
         if let Some(method) = method {
             match *method {
                 Method::RustMethod { ref fun } => {
-                    let new_frame = Stack::make_object(*context.get_class("Stack").unwrap().clone(), context.create_base_object());
+                    let new_frame = Stack::make_object(context.get_class("Stack").unwrap(), context.create_base_object());
                     stack.push(new_frame);
                     match fun(object.clone(), context, self) {
                         Ok(Some(result)) => stack_frame.push(result),
@@ -126,7 +121,7 @@ impl Interpreter {
                     stack.pop();
                 }
                 Method::BytecodeMethod { ref block } => {
-                    let stack_frame = Stack::make_object(*context.get_class("Stack").unwrap().clone(), context.create_base_object());
+                    let stack_frame = Stack::make_object(context.get_class("Stack").unwrap(), context.create_base_object());
                     stack.push(stack_frame);
                     context.attach_receiver(object.clone());
                     let object = block.borrow();
@@ -141,7 +136,7 @@ impl Interpreter {
         }
     }
 
-    fn send_super_msg(&mut self, arg: usize, msg_index: usize, context: &mut Context) {
+    fn send_super_msg(&mut self, arg: usize, msg_index: String, context: &mut Context) {
         let stack = self.stack.clone();
         let mut stack = stack.borrow_mut();
         let stack = stack.downcast_mut::<Stack>().expect("Expected Stack");
@@ -157,7 +152,7 @@ impl Interpreter {
         let borrowed_object = object.borrow();
 
         let message_class = context.get_class("Message").expect("Expected Message class").clone();
-        let message = Message::make_object(*message_class, context.create_base_object(), msg_index);
+        let message = Message::make_object(message_class, context.create_base_object(), msg_index);
         
         let parent = borrowed_object.get_super_object().expect("Expected super object");
         let borrowed_parent = parent.borrow();
@@ -167,7 +162,7 @@ impl Interpreter {
         if let Some(method) = method {
             match *method {
                 Method::RustMethod { ref fun } => {
-                    let new_frame = Stack::make_object(*context.get_class("Stack").unwrap().clone(), context.create_base_object());
+                    let new_frame = Stack::make_object(context.get_class("Stack").unwrap(), context.create_base_object());
                     stack.push(new_frame);
                     match fun(parent.clone(), context, self) {
                         Ok(Some(result)) => stack_frame.push(result),
@@ -177,7 +172,7 @@ impl Interpreter {
                     stack.pop();
                 }
                 Method::BytecodeMethod { ref block } => {
-                    let stack_frame = Stack::make_object(*context.get_class("Stack").unwrap().clone(), context.create_base_object());
+                    let stack_frame = Stack::make_object(context.get_class("Stack").unwrap(), context.create_base_object());
                     stack.push(stack_frame);
                     context.attach_receiver(parent);
                     let object = block.borrow();
@@ -192,7 +187,7 @@ impl Interpreter {
         }
     }
     
-    fn special_instruction(&mut self, instruction: &SpecialInstruction) -> bool {
+    fn special_instruction(&mut self, instruction: SpecialInstruction) -> bool {
         match instruction {
             SpecialInstruction::DupStack => self.dup_stack(),
             SpecialInstruction::DiscardStack => self.discard_stack(),

@@ -25,18 +25,18 @@ pub type ObjectBox<T> = Rc<RefCell<T>>;
 
 
 pub trait Object: downcast_rs::Downcast {
-    fn get_class(&self) -> &Class;
+    fn get_class(&self) -> Arc<Class>;
     fn get_super_object(&self) -> Option<ObjectBox<dyn Object>>;
     fn get_field(&self, index: usize) -> Option<ObjectBox<dyn Object>>;
     fn set_field(&mut self, index: usize, value: ObjectBox<dyn Object>);
     fn size(&self) -> Option<usize>;
     fn handle_message(&self, message: &Message) -> Option<Arc<Method>> {
-        let mut method = self.get_class().get_method(message.index);
+        let mut method = self.get_class().get_method(&message.index);
         let class = self.get_class();
         let mut super_class = &class.super_class;
         while method.is_none() {
             if let Some(class) = super_class {
-                method = class.get_method(message.index);
+                method = class.get_method(&message.index);
                 super_class = &class.super_class;
             } else {
                 break;
@@ -66,7 +66,7 @@ impl Nil {
 }
 
 impl Object for Nil {
-    fn get_class<'a>(&'a self) -> &Class {
+    fn get_class<'a>(&'a self) -> Arc<Class> {
         panic!("Nil does not have a class");
     }
     fn get_super_object(&self) -> Option<ObjectBox<dyn Object>> {
@@ -93,24 +93,24 @@ pub struct BaseObject {}
 
 impl BaseObject {
     pub fn make_class() -> Class {
-        let methods = Vec::new();
+        let methods = HashMap::new();
         Class::new(None, methods)
     }
 
-    pub fn make_object(class: Class) -> ObjectBox<dyn Object> {
+    pub fn make_object(class: Arc<Class>) -> ObjectBox<dyn Object> {
         let object = ObjectStruct::new(class, Some(Nil::new()), 0);
         object
     }
 }
 
 pub struct ObjectStruct {
-    class: Class,
+    class: Arc<Class>,
     super_object: Option<ObjectBox<dyn Object>>,
     fields: Box<[ObjectBox<dyn Object>]>,
 }
 
 impl ObjectStruct {
-    pub fn new(class: Class, super_object: Option<ObjectBox<dyn Object>>, size: usize) -> ObjectBox<dyn Object> {
+    pub fn new(class: Arc<Class>, super_object: Option<ObjectBox<dyn Object>>, size: usize) -> ObjectBox<dyn Object> {
         let fields = Vec::with_capacity(size);
         ObjectBox::new(RefCell::new(ObjectStruct {
             class,
@@ -122,8 +122,8 @@ impl ObjectStruct {
 
 
 impl Object for ObjectStruct {
-    fn get_class(&self) -> &Class {
-        &self.class
+    fn get_class(&self) -> Arc<Class> {
+        self.class.clone()
     }
     fn get_super_object(&self) -> Option<ObjectBox<dyn Object>> {
         self.super_object.clone()
@@ -139,36 +139,23 @@ impl Object for ObjectStruct {
     }
 }
 
+
+
 #[derive(Clone)]
 pub struct Class {
-    super_class: Option<Box<Class>>,
-    methods: Vec<Arc<Method>>,
+    super_class: Option<Arc<Class>>,
+    methods: HashMap<String, Arc<Method>>,
 }
 
 impl Class {
-    pub fn new(super_class: Option<Box<Class>>, methods: Vec<Arc<Method>>) -> Class {
+    pub fn new(super_class: Option<Arc<Class>>, methods: HashMap<String, Arc<Method>>) -> Class {
         Class {
             super_class,
             methods,
         }
     }
-    pub fn get_method(&self, index: usize) -> Option<Arc<Method>> {
+    pub fn get_method(&self, index: &str) -> Option<Arc<Method>> {
         self.methods.get(index).cloned()
-    }
-    pub fn override_method(&mut self, index: usize, method: Arc<Method>) {
-        //eprintln!("Overriding method");
-        //eprintln!("{:?}", self.methods);
-        self.methods[index] = method;
-    }
-    pub fn override_parent_method(&mut self, mut depth: usize, index: usize, method: Arc<Method>) {
-        let super_class = &mut self.super_class;
-        if depth == 0 {
-            self.override_method(index, method);
-            return;
-        } else if let Some(class) = super_class {
-            depth -= 1;
-            class.override_parent_method(depth, index, method);
-        }
     }
 }
 
@@ -193,20 +180,20 @@ impl std::fmt::Debug for Method {
 
 
 pub struct Message {
-    class: Class,
+    class: Arc<Class>,
     super_object: ObjectBox<dyn Object>,
-    index: usize,
+    index: String,
 }
 
 
 impl Message {
-    pub fn make_class(parent: Box<Class>) -> Class {
-        let methods = vec![];
+    pub fn make_class(parent: Arc<Class>) -> Class {
+        let methods = HashMap::new();
         Class::new(Some(parent), methods)
     }
-    pub fn make_object(class: Class, 
+    pub fn make_object(class: Arc<Class>, 
                            parent: ObjectBox<dyn Object>, 
-                           index: usize) -> ObjectBox<dyn Object> {
+                           index: String) -> ObjectBox<dyn Object> {
         let message = Message {
             class,
             super_object: parent,
@@ -218,8 +205,8 @@ impl Message {
 
 
 impl Object for Message {
-    fn get_class(&self) -> &Class { 
-        &self.class
+    fn get_class(&self) -> Arc<Class> { 
+        self.class.clone()
     }
     fn get_super_object(&self) -> Option<ObjectBox<dyn Object>> {
         Some(self.super_object.clone())
@@ -237,7 +224,7 @@ impl Object for Message {
 
 
 pub struct Context {
-    classes: HashMap<String, Box<Class>>,
+    classes: HashMap<String, Arc<Class>>,
     pub arguments: Vec<ObjectBox<dyn Object>>,
     pub receiver: Option<ObjectBox<dyn Object>>,
 }
@@ -249,29 +236,29 @@ impl Context {
     }*/
 
     pub fn new() -> Context {
-        let base_object_class = Box::new(BaseObject::make_class());
-        let mut classes = HashMap::new();
-        classes.insert("Object".to_string(), base_object_class);
+        let base_object_class = BaseObject::make_class();
+        let classes = HashMap::new();
         let arguments = vec![];
-        let context = Context {
+        let mut context = Context {
             classes,
             arguments,
             receiver: None,
         };
+        context.add_class("Object", base_object_class);
 
         context
     }
 
-    pub fn get_class(&self, name: &str) -> Option<&Box<Class>> {
-        self.classes.get(name)
+    pub fn get_class(&self, name: &str) -> Option<Arc<Class>> {
+        self.classes.get(name).cloned()
     }
 
     pub fn add_class(&mut self, name: &str, class: Class) {
-        self.classes.insert(name.to_string(), Box::new(class));
+        self.classes.insert(name.to_string(), Arc::new(class));
     }
 
     pub fn create_base_object(&self) -> ObjectBox<dyn Object> {
-        BaseObject::make_object(*self.get_class("Object").unwrap().clone())
+        BaseObject::make_object(self.get_class("Object").unwrap().clone())
     }
 
     pub fn attach_receiver(&mut self, receiver: ObjectBox<dyn Object>) {

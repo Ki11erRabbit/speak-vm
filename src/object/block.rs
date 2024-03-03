@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::cell::RefCell;
 use crate::object::{Class, Object, ObjectBox};
@@ -7,6 +8,8 @@ use crate::object::Interpreter;
 use crate::object::Method;
 use std::sync::Arc;
 
+use super::bytecode::ByteCode;
+
 
 
 
@@ -14,28 +17,28 @@ use std::sync::Arc;
 
 
 pub struct Block {
-    class: Class,
+    class: Arc<Class>,
     super_object: ObjectBox<dyn Object>,
-    pub bytecode: Vec<ObjectBox<dyn Object>>,
+    pub bytecode: Vec<ByteCode>,
 }
 
 
 impl Block {
-    pub fn make_class(parent: Box<Class>) -> Class {
-        let mut methods = Vec::new();
-        methods.push(Arc::new(Method::RustMethod { fun: Box::new(value) }));
+    pub fn make_class(parent: Arc<Class>) -> Class {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("value"), Arc::new(Method::RustMethod { fun: Box::new(value) }));
         Class::new(Some(parent), methods)
     }
-    pub fn make_object(class: Class,
+    pub fn make_object(class: Arc<Class>,
                        parent: ObjectBox<dyn Object>,
-                       bytecode: Vec<ObjectBox<dyn Object>>) -> ObjectBox<dyn Object> {
+                       bytecode: Vec<ByteCode>) -> ObjectBox<dyn Object> {
         Rc::new(RefCell::new(Block {class, super_object: parent, bytecode})) as ObjectBox<dyn Object>
     }
 }
 
 impl Object for Block {
-    fn get_class(&self) -> &Class {
-        &self.class
+    fn get_class(&self) -> Arc<Class> {
+        self.class.clone()
     }
     fn get_super_object(&self) -> Option<ObjectBox<dyn Object>> {
         Some(self.super_object.clone())

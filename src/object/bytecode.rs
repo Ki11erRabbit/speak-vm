@@ -1,8 +1,9 @@
 use super::{Class, Object, ObjectBox};
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
-pub struct ByteCodeObject {
+/*pub struct ByteCodeObject {
     class: Class,
     super_object: Option<ObjectBox<dyn Object>>,
     pub data: ByteCode,
@@ -11,7 +12,7 @@ pub struct ByteCodeObject {
 
 impl ByteCodeObject {
     pub fn make_class<'a>(parent: Box<Class>) -> Class {
-        Class::new(Some(parent), Vec::new())
+        Class::new(Some(parent), HashMap::new())
     }
     pub fn make_object<'a>(class: Class,
                            parent: ObjectBox<dyn Object>,
@@ -37,7 +38,7 @@ impl Object for ByteCodeObject {
     fn size(&self) -> Option<usize> {
         None
     }
-}
+}*/
 
 
 
@@ -47,7 +48,7 @@ impl Object for ByteCodeObject {
 
 
 
-
+#[derive(Clone)]
 pub enum ByteCode {
     Halt,
     NoOp,
@@ -60,13 +61,13 @@ pub enum ByteCode {
     /// Send a message to an object
     /// The first usize is the number of arguments to send
     /// The second usize is the index of the message to send
-    SendMsg(usize, usize),
-    SendSuperMsg(usize, usize),
+    SendMsg(usize, String),
+    SendSuperMsg(usize, String),
     SpecialInstruction(SpecialInstruction),
 }
 
 
-
+#[derive(Clone)]
 pub enum SpecialInstruction {
     DupStack,
     DiscardStack,

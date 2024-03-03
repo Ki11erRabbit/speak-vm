@@ -1,5 +1,6 @@
 
 use super::{Class, Method, ObjectBox};
+use std::collections::HashMap;
 use std::{cell::RefCell, rc::Rc};
 use crate::object::Object;
 use super::Context;
@@ -13,20 +14,19 @@ pub struct F64Object {
 }
 
 impl F64Object {
-    pub fn make_class(mut parent: Box<Class>) -> Class {
-        let methods = Vec::new();
-        let parent_mut = parent.as_mut();
-        parent_mut.override_method(0, Arc::new(Method::RustMethod { fun: Box::new(f64_add) }));
-        parent_mut.override_method(1, Arc::new(Method::RustMethod { fun: Box::new(f64_sub) }));
-        parent_mut.override_method(2, Arc::new(Method::RustMethod { fun: Box::new(f64_mul) }));
-        parent_mut.override_method(3, Arc::new(Method::RustMethod { fun: Box::new(f64_div) }));
-        parent_mut.override_method(4, Arc::new(Method::RustMethod { fun: Box::new(f64_mod) }));
+    pub fn make_class(mut parent: Arc<Class>) -> Class {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(f64_add) }));
+        methods.insert(String::from("sub"), Arc::new(Method::RustMethod { fun: Box::new(f64_sub) }));
+        methods.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(f64_mul) }));
+        methods.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(f64_div) }));
+        methods.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(f64_mod) }));
 
         
         Class::new(Some(parent), methods)
     }
 
-    pub fn make_object(class: Class,
+    pub fn make_object(class: Arc<Class>,
                            parent: ObjectBox<dyn Object>,
                            data: f64) -> ObjectBox<dyn Object> {
         let out = Rc::new(RefCell::new(PrimitiveObject::new(class, Some(parent), data)));
@@ -40,19 +40,18 @@ pub struct F32Object {
 }
 
 impl F32Object {
-    pub fn make_class(mut parent: Box<Class>) -> Class {
-        let methods = Vec::new();
-        let parent_mut = parent.as_mut();
-        parent_mut.override_method(0, Arc::new(Method::RustMethod { fun: Box::new(f32_add) }));
-        parent_mut.override_method(1, Arc::new(Method::RustMethod { fun: Box::new(f32_sub) }));
-        parent_mut.override_method(2, Arc::new(Method::RustMethod { fun: Box::new(f32_mul) }));
-        parent_mut.override_method(3, Arc::new(Method::RustMethod { fun: Box::new(f32_div) }));
-        parent_mut.override_method(4, Arc::new(Method::RustMethod { fun: Box::new(f32_mod) }));
+    pub fn make_class(mut parent: Arc<Class>) -> Class {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(f32_add) }));
+        methods.insert(String::from("sub"), Arc::new(Method::RustMethod { fun: Box::new(f32_sub) }));
+        methods.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(f32_mul) }));
+        methods.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(f32_div) }));
+        methods.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(f32_mod) }));
         
         Class::new(Some(parent), methods)
     }
 
-    pub fn make_object(class: Class,
+    pub fn make_object(class: Arc<Class>,
                            parent: ObjectBox<dyn Object>,
                            data: f32) -> ObjectBox<dyn Object> {
         let out = Rc::new(RefCell::new(PrimitiveObject::new(class, Some(parent), data)));

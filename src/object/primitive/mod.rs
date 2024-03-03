@@ -2,6 +2,7 @@ use super::{Class, Method, ObjectBox};
 use crate::object::Object;
 use super::Context;
 use super::Fault;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -13,20 +14,20 @@ pub mod float;
 
 #[derive(Clone)]
 pub struct PrimitiveObject<T: 'static> {
-    class: Class,
+    class: Arc<Class>,
     super_object: Option<ObjectBox<dyn Object>>,
     pub data: T,
 }
 
 impl<T: 'static> PrimitiveObject<T> {
-    pub fn new(class: Class, super_object: Option<ObjectBox<dyn Object>>, data: T) -> Self {
+    pub fn new(class: Arc<Class>, super_object: Option<ObjectBox<dyn Object>>, data: T) -> Self {
         Self { class, super_object, data }
     }
 }
 
 impl <T> Object for PrimitiveObject<T> {
-    fn get_class(&self) -> &Class {
-        &self.class
+    fn get_class(&self) -> Arc<Class> {
+        self.class.clone()
     }
     fn get_super_object(&self) -> Option<ObjectBox<dyn Object>> {
         self.super_object.clone()
@@ -45,30 +46,30 @@ impl <T> Object for PrimitiveObject<T> {
 
 
 pub struct NumberObject {
-    class: Class,
+    class: Arc<Class>,
     super_object: Option<ObjectBox<dyn Object>>,
 }
 
 impl NumberObject {
-    pub fn make_class(parent: Box<Class>) -> Class {
-        let mut methods = Vec::new();
-        methods.push(Arc::new(Method::RustMethod { fun: Box::new(number_add) }));
-        methods.push(Arc::new(Method::RustMethod { fun: Box::new(number_subtract) }));
-        methods.push(Arc::new(Method::RustMethod { fun: Box::new(number_multiply) }));
-        methods.push(Arc::new(Method::RustMethod { fun: Box::new(number_divide) }));
-        methods.push(Arc::new(Method::RustMethod { fun: Box::new(number_modulo) }));
+    pub fn make_class(parent: Arc<Class>) -> Class {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(number_add) }));
+        methods.insert(String::from("sub"), Arc::new(Method::RustMethod { fun: Box::new(number_subtract) }));
+        methods.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(number_multiply) }));
+        methods.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(number_divide) }));
+        methods.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(number_modulo) }));
         
         Class::new(Some(parent), methods)
     }
-    pub fn make_object(class: Class,
+    pub fn make_object(class: Arc<Class>,
                            parent: ObjectBox<dyn Object>) -> ObjectBox<dyn Object> {
         Rc::new(RefCell::new(NumberObject {class, super_object: Some(parent)})) as ObjectBox<dyn Object>
     }
 }
 
 impl Object for NumberObject {
-    fn get_class(&self) -> &Class {
-        &self.class
+    fn get_class(&self) -> Arc<Class> {
+        self.class.clone()
     }
     fn get_super_object(&self) -> Option<ObjectBox<dyn Object>> {
         self.super_object.clone()

@@ -1,9 +1,9 @@
-use super::interpreter;
 use super::interpreter::Interpreter;
 use super::Class;
 use super::Object;
 use super::ObjectBox;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 use crate::object::Method;
 use super::Context;
@@ -13,26 +13,26 @@ use super::Fault;
 
 
 pub struct Stack {
-    class: Class,
+    class: Arc<Class>,
     super_object: Option<ObjectBox<dyn Object>>,
     pub data: Vec<ObjectBox<dyn Object>>,
 }
 
 impl Stack {
-    pub fn make_class(parent: Box<Class>) -> Class {
-        let mut methods = Vec::new();
-        methods.push(Arc::new(Method::RustMethod { fun: Box::new(stack_push) }));
-        methods.push(Arc::new(Method::RustMethod { fun: Box::new(stack_pop) }));
+    pub fn make_class(parent: Arc<Class>) -> Class {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("push"), Arc::new(Method::RustMethod { fun: Box::new(stack_push) }));
+        methods.insert(String::from("pop"), Arc::new(Method::RustMethod { fun: Box::new(stack_pop) }));
 
         Class::new(Some(parent), methods)
     }
 
-    pub fn make_object(class: Class,
+    pub fn make_object(class: Arc<Class>,
                            parent: ObjectBox<dyn Object>) -> ObjectBox<dyn Object> {
         Rc::new(RefCell::new(Stack {class, super_object: Some(parent), data: Vec::new()})) as ObjectBox<dyn Object>
     }
 
-    pub fn make_object_with_stack(class: Class,
+    pub fn make_object_with_stack(class: Arc<Class>,
                            parent: ObjectBox<dyn Object>,
                            data: Vec<ObjectBox<dyn Object>>) -> ObjectBox<dyn Object> {
         Rc::new(RefCell::new(Stack {class, super_object: Some(parent), data})) as ObjectBox<dyn Object>
@@ -56,8 +56,8 @@ impl Stack {
 }
 
 impl Object for Stack {
-    fn get_class(&self) -> &Class {
-        &self.class
+    fn get_class(&self) -> Arc<Class> {
+        self.class.clone()
     }
     fn get_super_object(&self) -> Option<ObjectBox<dyn Object>> {
         self.super_object.clone()
