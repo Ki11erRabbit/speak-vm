@@ -1,13 +1,10 @@
 use super::{Context, Message};
-use super::{Class, Object, ObjectBox};
-use std::any::Any;
-use std::cell::RefCell;
-use std::rc::Rc;
-use super::bytecode::ByteCode;
+use super::{Object, ObjectBox};
+use super::bytecode::{ByteCode, SpecialInstruction};
 use super::bytecode::ByteCodeObject;
 use super::stack::Stack;
-use std::sync::Arc;
 use super::Method;
+use super::block::Block;
 
 
 
@@ -34,6 +31,7 @@ impl Interpreter {
                 ByteCode::StoreTemp(index) => self.store_temp(*index, context),
                 ByteCode::SendMsg(arg, msg_index) => self.send_msg(*arg, *msg_index, context),
                 ByteCode::SendSuperMsg(arg, msg_index) => self.send_super_msg(*arg, *msg_index, context),
+                ByteCode::SpecialInstruction(instruction) => return self.special_instruction(instruction),
                 _ => unimplemented!()
             }
         }
@@ -96,8 +94,9 @@ impl Interpreter {
     }
 
     fn send_msg(&mut self, arg: usize, msg_index: usize, context: &mut Context) {
-        let stack = self.stack.borrow();
-        let stack = stack.downcast_ref::<Stack>().expect("Expected Stack");
+        let stack = self.stack.clone();
+        let mut stack = stack.borrow_mut();
+        let stack = stack.downcast_mut::<Stack>().expect("Expected Stack");
         let stack_frame = stack.data.last().expect("Expected stack frame").clone();
         let mut stack_frame = stack_frame.borrow_mut();
         let stack_frame = stack_frame.downcast_mut::<Stack>().expect("Expected stack frame");
@@ -106,7 +105,7 @@ impl Interpreter {
             args.push(stack_frame.pop().expect("Expected argument"));
         }
         context.arguments = args;
-        let object = stack_frame.data.pop().expect("Stack was empty").clone();
+        let object = stack_frame.data.last().expect("Stack was empty").clone();
         let borrowed_object = object.borrow();
 
         let message_class = context.get_class("Message").expect("Expected Message class").clone();
@@ -117,22 +116,35 @@ impl Interpreter {
         if let Some(method) = method {
             match *method {
                 Method::RustMethod { ref fun } => {
-                    match fun(object.clone(), context) {
+                    let new_frame = Stack::make_object(*context.get_class("Stack").unwrap().clone(), context.create_base_object());
+                    stack.push(new_frame);
+                    match fun(object.clone(), context, self) {
                         Ok(Some(result)) => stack_frame.push(result),
                         Ok(None) => {}
                         Err(_) => unimplemented!("Implement errors")
                     }
+                    stack.pop();
                 }
-                Method::BytecodeMethod { .. } => {
-                    unimplemented!()
+                Method::BytecodeMethod { ref block } => {
+                    let stack_frame = Stack::make_object(*context.get_class("Stack").unwrap().clone(), context.create_base_object());
+                    stack.push(stack_frame);
+                    context.attach_receiver(object.clone());
+                    let object = block.borrow();
+                    let object = object.downcast_ref::<Block>().expect("Expected block");
+                    for code in object.bytecode.iter() {
+                        self.run(context, code.clone());
+                    }
+                    stack.pop();
+
                 }
             }
         }
     }
 
     fn send_super_msg(&mut self, arg: usize, msg_index: usize, context: &mut Context) {
-        let stack = self.stack.borrow();
-        let stack = stack.downcast_ref::<Stack>().expect("Expected Stack");
+        let stack = self.stack.clone();
+        let mut stack = stack.borrow_mut();
+        let stack = stack.downcast_mut::<Stack>().expect("Expected Stack");
         let stack_frame = stack.data.last().expect("Expected stack frame").clone();
         let mut stack_frame = stack_frame.borrow_mut();
         let stack_frame = stack_frame.downcast_mut::<Stack>().expect("Expected stack frame");
@@ -141,7 +153,7 @@ impl Interpreter {
             args.push(stack_frame.pop().expect("Expected argument"));
         }
         context.arguments = args;
-        let object = stack_frame.data.pop().expect("Stack was empty").clone();
+        let object = stack_frame.data.last().expect("Stack was empty").clone();
         let borrowed_object = object.borrow();
 
         let message_class = context.get_class("Message").expect("Expected Message class").clone();
@@ -150,22 +162,81 @@ impl Interpreter {
         let parent = borrowed_object.get_super_object().expect("Expected super object");
         let borrowed_parent = parent.borrow();
 
-        //TODO: Implement override
         let method = borrowed_parent.process_message(message);
         drop(borrowed_parent);
         if let Some(method) = method {
             match *method {
                 Method::RustMethod { ref fun } => {
-                    match fun(parent.clone(), context) {
+                    let new_frame = Stack::make_object(*context.get_class("Stack").unwrap().clone(), context.create_base_object());
+                    stack.push(new_frame);
+                    match fun(parent.clone(), context, self) {
                         Ok(Some(result)) => stack_frame.push(result),
                         Ok(None) => {}
                         Err(_) => unimplemented!("Implement errors")
                     }
+                    stack.pop();
                 }
-                Method::BytecodeMethod { .. } => {
-                    unimplemented!()
+                Method::BytecodeMethod { ref block } => {
+                    let stack_frame = Stack::make_object(*context.get_class("Stack").unwrap().clone(), context.create_base_object());
+                    stack.push(stack_frame);
+                    context.attach_receiver(parent);
+                    let object = block.borrow();
+                    let object = object.downcast_ref::<Block>().expect("Expected block");
+                    for code in object.bytecode.iter() {
+                        self.run(context, code.clone());
+                    }
+                    stack.pop();
+
                 }
             }
         }
     }
+    
+    fn special_instruction(&mut self, instruction: &SpecialInstruction) -> bool {
+        match instruction {
+            SpecialInstruction::DupStack => self.dup_stack(),
+            SpecialInstruction::DiscardStack => self.discard_stack(),
+            SpecialInstruction::ReturnStack => self.return_stack(),
+        }
+    }
+    
+    fn dup_stack(&mut self) -> bool {
+        let stack = self.stack.borrow();
+        let stack = stack.downcast_ref::<Stack>().expect("Expected stack");
+        let stack_frame = stack.data.last().expect("Expected stack frame").clone();
+        let mut stack_frame = stack_frame.borrow_mut();
+        let stack_frame = stack_frame.downcast_mut::<Stack>().expect("Expected stack frame");
+        let value = stack_frame.index(0).expect("Expected value").clone();
+        
+        let object = crate::object::object_clone(value);
+
+        stack_frame.push(object);
+        true
+    }
+
+    fn discard_stack(&mut self) -> bool {
+        let stack = self.stack.borrow();
+        let stack = stack.downcast_ref::<Stack>().expect("Expected stack");
+        let stack_frame = stack.data.last().expect("Expected stack frame").clone();
+        let mut stack_frame = stack_frame.borrow_mut();
+        let stack_frame = stack_frame.downcast_mut::<Stack>().expect("Expected stack frame");
+        stack_frame.pop();
+        true
+    }
+
+    fn return_stack(&mut self) -> bool {
+        let stack = self.stack.clone();
+        let mut stack = stack.borrow_mut();
+        let stack = stack.downcast_mut::<Stack>().expect("Expected stack");
+        let current_frame = stack.pop().expect("Expected stack frame").clone();
+        let mut current_frame = current_frame.borrow_mut();
+        let current_frame = current_frame.downcast_mut::<Stack>().expect("Expected stack frame");
+        let value = current_frame.pop().expect("Expected value").clone();
+        let frame = stack.data.last().expect("Expected stack frame").clone();
+        let mut frame = frame.borrow_mut();
+        let frame = frame.downcast_mut::<Stack>().expect("Expected stack frame");
+        frame.push(value);
+        false
+    }
+
 }

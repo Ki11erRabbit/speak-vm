@@ -71,5 +71,4 @@ pub enum SpecialInstruction {
     DupStack,
     DiscardStack,
     ReturnStack,
-    ReturnReciever,
 }

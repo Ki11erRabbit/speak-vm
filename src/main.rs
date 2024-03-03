@@ -1,12 +1,13 @@
 pub mod object;
 pub mod vm;
+use object::primitive::integer::IntegerObject;
 use object::primitive::NumberObject;
 use object::Message;
 
 use crate::object::Context;
 use crate::object::bytecode::{ByteCodeObject, ByteCode};
 use crate::object::stack::Stack;
-use crate::object::primitive::I64Object;
+use crate::object::primitive::integer::I64Object;
 use crate::object::interpreter::Interpreter;
 
 fn main() {
@@ -14,7 +15,8 @@ fn main() {
     let bytecode_class = ByteCodeObject::make_class(context.get_class("Object").unwrap().clone());
     let stack_class = Stack::make_class(context.get_class("Object").unwrap().clone());
     let number_class = NumberObject::make_class(context.get_class("Object").unwrap().clone());
-    let i64_class = I64Object::make_class(Box::new(number_class.clone()));
+    let integer_class = IntegerObject::make_class(Box::new(number_class.clone()));
+    let i64_class = I64Object::make_class(Box::new(integer_class.clone()));
     let message_class = Message::make_class(context.get_class("Object").unwrap().clone());
     context.add_class("Bytecode", bytecode_class.clone());
     context.add_class("Stack", stack_class);

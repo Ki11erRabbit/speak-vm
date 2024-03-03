@@ -2,11 +2,15 @@ pub mod primitive;
 pub mod stack;
 pub mod bytecode;
 pub mod interpreter;
+pub mod block;
 
 use std::sync::Arc;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+
+use self::interpreter::Interpreter;
+use self::primitive::PrimitiveObject;
 
 pub enum Fault {
     NotImplemented,
@@ -156,13 +160,24 @@ impl Class {
         //eprintln!("{:?}", self.methods);
         self.methods[index] = method;
     }
+    pub fn override_parent_method(&mut self, mut depth: usize, index: usize, method: Arc<Method>) {
+        let super_class = &mut self.super_class;
+        if depth == 0 {
+            self.override_method(index, method);
+            return;
+        } else if let Some(class) = super_class {
+            depth -= 1;
+            class.override_parent_method(depth, index, method);
+        }
+    }
 }
 
 pub enum Method {
     RustMethod {
-        fun: Box<dyn Fn(ObjectBox<dyn Object>, &mut Context) -> Result<Option<ObjectBox<dyn Object>>, Fault>>,
+        fun: Box<dyn Fn(ObjectBox<dyn Object>, &mut Context, &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault>>,
     },
     BytecodeMethod {
+        block: ObjectBox<dyn Object>,
     },
 }
 
@@ -170,7 +185,7 @@ impl std::fmt::Debug for Method {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Method::RustMethod { fun: _ } => write!(f, "RustMethod"),
-            Method::BytecodeMethod {} => write!(f, "BytecodeMethod"),
+            Method::BytecodeMethod {..} => write!(f, "BytecodeMethod"),
         }
     }
 }
@@ -224,6 +239,7 @@ impl Object for Message {
 pub struct Context {
     classes: HashMap<String, Box<Class>>,
     pub arguments: Vec<ObjectBox<dyn Object>>,
+    pub receiver: Option<ObjectBox<dyn Object>>,
 }
 
 impl Context {
@@ -240,6 +256,7 @@ impl Context {
         let context = Context {
             classes,
             arguments,
+            receiver: None,
         };
 
         context
@@ -255,5 +272,42 @@ impl Context {
 
     pub fn create_base_object(&self) -> ObjectBox<dyn Object> {
         BaseObject::make_object(*self.get_class("Object").unwrap().clone())
+    }
+
+    pub fn attach_receiver(&mut self, receiver: ObjectBox<dyn Object>) {
+        self.receiver = Some(receiver);
+    }
+
+    pub fn take_receiver(&mut self) -> Option<ObjectBox<dyn Object>> {
+        self.receiver.take()
+    }
+}
+
+
+
+
+pub fn object_clone(object: ObjectBox<dyn Object>) -> ObjectBox<dyn Object> {
+    let borrowed_object = object.borrow();
+    if let Some(obj) = borrowed_object.downcast_ref::<PrimitiveObject<i64>>() {
+        let new_obj = obj.clone();
+        return Rc::new(RefCell::new(new_obj)) as ObjectBox<dyn Object>
+    } else if let Some(obj) = borrowed_object.downcast_ref::<PrimitiveObject<u64>>() {
+        return Rc::new(RefCell::new(obj.clone())) as ObjectBox<dyn Object>
+    } else if let Some(obj) = borrowed_object.downcast_ref::<PrimitiveObject<i32>>() {
+        return Rc::new(RefCell::new(obj.clone())) as ObjectBox<dyn Object>
+    } else if let Some(obj) = borrowed_object.downcast_ref::<PrimitiveObject<u32>>() {
+        return Rc::new(RefCell::new(obj.clone())) as ObjectBox<dyn Object>
+    } else if let Some(obj) = borrowed_object.downcast_ref::<PrimitiveObject<i16>>() {
+        return Rc::new(RefCell::new(obj.clone())) as ObjectBox<dyn Object>
+    }  else if let Some(obj) = borrowed_object.downcast_ref::<PrimitiveObject<u16>>() {
+        return Rc::new(RefCell::new(obj.clone())) as ObjectBox<dyn Object>
+    } else if let Some(obj) = borrowed_object.downcast_ref::<PrimitiveObject<i8>>() {
+        return Rc::new(RefCell::new(obj.clone())) as ObjectBox<dyn Object>
+    } else if let Some(obj) = borrowed_object.downcast_ref::<PrimitiveObject<u8>>() {
+        return Rc::new(RefCell::new(obj.clone())) as ObjectBox<dyn Object>
+    } else if let Some(obj) = borrowed_object.downcast_ref::<PrimitiveObject<bool>>() {
+        return Rc::new(RefCell::new(obj.clone())) as ObjectBox<dyn Object>
+    } else {
+        return object.clone()
     }
 }
