@@ -11,6 +11,7 @@ use crate::object::Interpreter;
 
 pub mod integer;
 pub mod float;
+pub mod boolean;
 
 #[derive(Clone)]
 pub struct PrimitiveObject<T: 'static> {
@@ -58,6 +59,9 @@ impl NumberObject {
         methods.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(number_multiply) }));
         methods.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(number_divide) }));
         methods.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(number_modulo) }));
+        methods.insert(String::from("abs"), Arc::new(Method::RustMethod { fun: Box::new(number_abs) }));
+        methods.insert(String::from("pow"), Arc::new(Method::RustMethod { fun: Box::new(number_pow) }));
+        methods.insert(String::from("is_zero"), Arc::new(Method::RustMethod { fun: Box::new(number_is_zero) }));
         
         Class::new(Some(parent), methods)
     }
@@ -105,6 +109,17 @@ fn number_modulo(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter)
     Err(Fault::NotImplemented)
 }
 
+fn number_abs(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+    Err(Fault::NotImplemented)
+}
+
+fn number_pow(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+    Err(Fault::NotImplemented)
+}
+
+fn number_is_zero(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+    Err(Fault::NotImplemented)
+}
 
 
 #[macro_export]

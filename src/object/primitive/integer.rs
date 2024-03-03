@@ -8,6 +8,7 @@ use super::Fault;
 use num_traits::Zero;
 use crate::create_type_ops;
 use crate::object::primitive::PrimitiveObject;
+use crate::Interpreter;
 
 
 
@@ -18,7 +19,13 @@ pub struct IntegerObject {
 
 impl IntegerObject {
     pub fn make_class(parent: Arc<Class>) -> Class {
-        let methods = HashMap::new();
+        let mut methods = HashMap::new();
+        methods.insert(String::from("divides"), Arc::new(Method::RustMethod { fun: Box::new(integer_divides) }));
+        methods.insert(String::from("shift_right"), Arc::new(Method::RustMethod { fun: Box::new(integer_shift_right) }));
+        methods.insert(String::from("shift_left"), Arc::new(Method::RustMethod { fun: Box::new(integer_shift_left) }));
+        methods.insert(String::from("and"), Arc::new(Method::RustMethod { fun: Box::new(integer_bitwise_and) }));
+        methods.insert(String::from("or"), Arc::new(Method::RustMethod { fun: Box::new(integer_bitwise_or) }));
+        methods.insert(String::from("xor"), Arc::new(Method::RustMethod { fun: Box::new(integer_bitwise_xor) }));
         
         Class::new(Some(parent), methods)
     }
@@ -48,6 +55,29 @@ impl Object for IntegerObject {
     }
 }
 
+fn integer_divides(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+    Err(Fault::NotImplemented)
+}
+
+fn integer_shift_right(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+    Err(Fault::NotImplemented)
+}
+
+fn integer_shift_left(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+    Err(Fault::NotImplemented)
+}
+
+fn integer_bitwise_and(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+    Err(Fault::NotImplemented)
+}
+
+fn integer_bitwise_or(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+    Err(Fault::NotImplemented)
+}
+
+fn integer_bitwise_xor(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+    Err(Fault::NotImplemented)
+}
 
 
 pub struct I64Object {

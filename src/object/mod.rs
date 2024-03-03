@@ -3,6 +3,7 @@ pub mod stack;
 pub mod bytecode;
 pub mod interpreter;
 pub mod block;
+pub mod string;
 
 use std::sync::Arc;
 use std::cell::RefCell;
