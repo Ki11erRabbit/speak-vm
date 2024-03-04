@@ -46,6 +46,9 @@ impl Object for StringObject {
     fn size(&self) -> Option<usize> {
         Some(self.value.len())
     }
+    fn duplicate(&self) -> ObjectBox<dyn Object> {
+        StringObject::make_object(self.class.clone(), self.super_object.clone().unwrap(), self.value.clone())
+    }
 }
 
 

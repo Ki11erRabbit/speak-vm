@@ -75,6 +75,9 @@ impl Object for Stack {
     fn size(&self) -> Option<usize> {
         Some(self.data.len())
     }
+    fn duplicate(&self) -> ObjectBox<dyn Object> {
+        Stack::make_object_with_stack(self.class.clone(), self.super_object.clone().unwrap(), self.data.clone())
+    }
 }
 
 fn stack_push(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {

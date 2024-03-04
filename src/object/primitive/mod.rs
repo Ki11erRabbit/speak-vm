@@ -12,21 +12,22 @@ use crate::object::Interpreter;
 pub mod integer;
 pub mod float;
 pub mod boolean;
+pub mod character;
 
 #[derive(Clone)]
-pub struct PrimitiveObject<T: 'static> {
+pub struct PrimitiveObject<T: Copy + 'static> {
     class: Arc<Class>,
     super_object: Option<ObjectBox<dyn Object>>,
     pub data: T,
 }
 
-impl<T: 'static> PrimitiveObject<T> {
+impl<T: Copy + 'static> PrimitiveObject<T> {
     pub fn new(class: Arc<Class>, super_object: Option<ObjectBox<dyn Object>>, data: T) -> Self {
         Self { class, super_object, data }
     }
 }
 
-impl <T> Object for PrimitiveObject<T> {
+impl<T: Copy> Object for PrimitiveObject<T> {
     fn get_class(&self) -> Arc<Class> {
         self.class.clone()
     }
@@ -41,6 +42,9 @@ impl <T> Object for PrimitiveObject<T> {
     }
     fn size(&self) -> Option<usize> {
         None
+    }
+    fn duplicate(&self) -> ObjectBox<dyn Object> {
+        Rc::new(RefCell::new(PrimitiveObject::new(self.class.clone(), self.super_object.clone(), self.data)))
     }
 }
 
@@ -86,6 +90,9 @@ impl Object for NumberObject {
     }
     fn size(&self) -> Option<usize> {
         None
+    }
+    fn duplicate(&self) -> ObjectBox<dyn Object> {
+        Rc::new(RefCell::new(NumberObject {class: self.class.clone(), super_object: self.super_object.clone()}))
     }
 }
 

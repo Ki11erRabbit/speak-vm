@@ -52,6 +52,9 @@ impl Object for Block {
     fn size(&self) -> Option<usize> {
         None
     }
+    fn duplicate(&self) -> ObjectBox<dyn Object> {
+        Block::make_object(self.class.clone(), self.super_object.clone(), self.bytecode.clone())
+    }
 }
 
 fn value(object: ObjectBox<dyn Object>, context: &mut Context, interpreter: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
