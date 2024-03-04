@@ -48,7 +48,7 @@ impl Logger {
 
 
 
-fn log_println(_: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn log_println(_: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let message = context.arguments[0].clone();
     let message = message.borrow();
     let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
@@ -56,7 +56,7 @@ fn log_println(_: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Inte
     Ok(None)
 }
 
-fn log_print(_: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn log_print(_: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let message = context.arguments[0].clone();
     let message = message.borrow();
     let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
@@ -65,7 +65,7 @@ fn log_print(_: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interp
     Ok(None)
 }
 
-fn log_eprintln(_: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn log_eprintln(_: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let message = context.arguments[0].clone();
     let message = message.borrow();
     let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
@@ -73,7 +73,7 @@ fn log_eprintln(_: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Int
     Ok(None)
 }
 
-fn log_eprint(_: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn log_eprint(_: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let message = context.arguments[0].clone();
     let message = message.borrow();
     let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
@@ -82,7 +82,7 @@ fn log_eprint(_: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Inter
     Ok(None)
 }
 
-fn log_info(_: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn log_info(_: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let message = context.arguments[0].clone();
     let message = message.borrow();
     let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
@@ -90,7 +90,7 @@ fn log_info(_: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpr
     Ok(None)
 }
 
-fn log_trace(_: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn log_trace(_: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let message = context.arguments[0].clone();
     let message = message.borrow();
     let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
@@ -98,7 +98,7 @@ fn log_trace(_: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interp
     Ok(None)
 }
 
-fn log_warn(_: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn log_warn(_: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let message = context.arguments[0].clone();
     let message = message.borrow();
     let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
@@ -106,7 +106,7 @@ fn log_warn(_: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpr
     Ok(None)
 }
 
-fn log_error(_: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn log_error(_: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let message = context.arguments[0].clone();
     let message = message.borrow();
     let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
@@ -114,7 +114,7 @@ fn log_error(_: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interp
     Ok(None)
 }
 
-fn log_debug(_: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn log_debug(_: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let message = context.arguments[0].clone();
     let message = message.borrow();
     let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;

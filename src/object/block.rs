@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::cell::RefCell;
 use crate::object::{Class, Object, ObjectBox};
-use crate::object::Context;
 use crate::object::Fault;
 use crate::object::Interpreter;
 use crate::object::Method;
@@ -58,11 +57,11 @@ impl Object for Block {
     }
 }
 
-fn value(object: ObjectBox<dyn Object>, context: &mut ContextData, interpreter: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn value(object: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let object = object.borrow();
     let object = object.downcast_ref::<Block>().expect("Expected block");
     for code in object.bytecode.iter() {
-        interpreter.run(context, code.clone());
+        Interpreter::run(context, code.clone());
     }
     Ok(None)
 }

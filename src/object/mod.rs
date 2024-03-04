@@ -24,6 +24,7 @@ use self::primitive::integer::{I16Object, I32Object, I64Object, I8Object, Intege
 use self::primitive::{NumberObject, PrimitiveObject};
 use self::string::StringObject;
 
+#[derive(Debug)]
 pub enum Fault {
     NotImplemented,
     InvalidOperation,
@@ -126,13 +127,13 @@ impl BaseObject {
     }
 }
 
-fn obj_clone(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn obj_clone(object: ObjectBox<dyn Object>, _: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let object = object.borrow();
     let new_object = object.duplicate();
     Result::Ok(Some(new_object))
 }
 
-fn obj_equals(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn obj_equals(object: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let object_ptr = object.as_ptr();
     let other_ptr = context.arguments[0].as_ptr();
     if std::ptr::eq(object_ptr, other_ptr) {
@@ -142,7 +143,7 @@ fn obj_equals(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut 
     }
 }
 
-fn obj_hash(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn obj_hash(object: ObjectBox<dyn Object>, _: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let object = object.as_ptr();
     let string = format!("{:p}", object);
     let mut hasher = std::hash::DefaultHasher::new();
@@ -151,13 +152,13 @@ fn obj_hash(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpre
     Ok(Some(create_u64(hash as u64)))
 }
 
-fn obj_to_string(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn obj_to_string(object: ObjectBox<dyn Object>, _: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let object_ptr = object.as_ptr();
     let string = format!("Object at {:p}", object_ptr);
     Ok(Some(create_string(string)))
 }
 
-fn obj_order(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn obj_order(object: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let object_ptr = object.as_ptr();
     let other_ptr = context.arguments[0].as_ptr();
     if object_ptr as *const () < other_ptr as *const () {
@@ -244,7 +245,7 @@ unsafe impl Sync for Method {}
 
 pub enum Method {
     RustMethod {
-        fun: Box<dyn Fn(ObjectBox<dyn Object>, &mut ContextData, &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault>>,
+        fun: Box<dyn Fn(ObjectBox<dyn Object>, &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault>>,
     },
     BytecodeMethod {
         block: ObjectBox<dyn Object>,
@@ -324,6 +325,7 @@ lazy_static! {
 
 pub struct ObjectFactory {
     classes: HashMap<String, Arc<Class>>,
+    parents: HashMap<String, String>,
 }
 
 impl ObjectFactory {
@@ -331,7 +333,29 @@ impl ObjectFactory {
         let base_object_class = BaseObject::make_class();
         let mut context = ObjectFactory {
             classes: HashMap::new(),
+            parents: HashMap::new(),
         };
+        
+        context.parents.insert(String::from("Message"), String::from("Object"));
+        context.parents.insert(String::from("Number"), String::from("Object"));
+        context.parents.insert(String::from("Integer"), String::from("Number"));
+        context.parents.insert(String::from("Float"), String::from("Number"));
+        context.parents.insert(String::from("String"), String::from("Object"));
+        context.parents.insert(String::from("Char"), String::from("Object"));
+        context.parents.insert(String::from("Stack"), String::from("Object"));
+        context.parents.insert(String::from("Block"), String::from("Object"));
+        context.parents.insert(String::from("Logger"), String::from("Object"));
+        context.parents.insert(String::from("I64"), String::from("Integer"));
+        context.parents.insert(String::from("U64"), String::from("Integer"));
+        context.parents.insert(String::from("I32"), String::from("Integer"));
+        context.parents.insert(String::from("U32"), String::from("Integer"));
+        context.parents.insert(String::from("I16"), String::from("Integer"));
+        context.parents.insert(String::from("U16"), String::from("Integer"));
+        context.parents.insert(String::from("I8"), String::from("Integer"));
+        context.parents.insert(String::from("U8"), String::from("Integer"));
+        context.parents.insert(String::from("F64"), String::from("Float"));
+        context.parents.insert(String::from("F32"), String::from("Float"));
+        context.parents.insert(String::from("Boolean"), String::from("Object"));
 
         context.add_class("Object", base_object_class);
         let base_class = context.get_class("Object").unwrap();
@@ -453,8 +477,50 @@ impl ObjectFactory {
         self.classes.insert(name.to_string(), Arc::new(class));
     }
 
-    fn make_parent(&mut self, _name: &str) -> Result<ObjectBox<dyn Object>, Fault> {
-        unimplemented!("need logic for storing parents of objects")
+    fn make_parent(&self, name: &str) -> Result<ObjectBox<dyn Object>, Fault> {
+        self.create_object(self.parents.get(name).ok_or(Fault::InvalidType)?, &[])
+    }
+    
+    fn create_object(&self, name: &str, arguments: &[ObjectBox<dyn Object>]) -> Result<ObjectBox<dyn Object>, Fault> {
+        match name {
+            "Object" => Ok(self.create_base_object()),
+            "Number" => Ok(self.create_number()),
+            "Integer" => Ok(self.create_integer()),
+            "Float" => Ok(self.create_float()),
+            "I64" => Ok(self.create_i64(0)),
+            "U64" => Ok(self.create_u64(0)),
+            "I32" => Ok(self.create_i32(0)),
+            "U32" => Ok(self.create_u32(0)),
+            "I16" => Ok(self.create_i16(0)),
+            "U16" => Ok(self.create_u16(0)),
+            "I8" => Ok(self.create_i8(0)),
+            "U8" => Ok(self.create_u8(0)),
+            "F64" => Ok(self.create_f64(0.0)),
+            "F32" => Ok(self.create_f32(0.0)),
+            "String" => Ok(self.create_string("".to_string())),
+            "Char" => Ok(self.create_character(' ')),
+            "Message" => {
+                if arguments.len() == 1 {
+                    let message = arguments[0].borrow();
+                    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
+                    Ok(self.create_message(&message.value))
+                } else {
+                    Err(Fault::InvalidType)
+                }
+            },
+            "Logger" => Ok(self.create_logger()),
+            "Stack" => Ok(self.create_stack()),
+            x => {
+                let class = self.get_class(x).ok_or(Fault::InvalidType)?;
+                let object = ObjectStruct::new(class, Some(self.make_parent(x)?), arguments.len());
+                let mut object_mut = object.borrow_mut();
+                for (index, argument) in arguments.iter().enumerate() {
+                    object_mut.set_field(index, argument.clone());
+                }
+                drop(object_mut);
+                Ok(object)
+            }
+        }
     }
 }
 
@@ -562,14 +628,8 @@ pub fn add_class(name: &str, class: Class) {
 
 
 pub fn create_object(name: &str, arguments: &[ObjectBox<dyn Object>]) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
-    let mut factory = get_factory_mut();
-    let class = factory.get_class(name).ok_or(Fault::InvalidType)?;
-    let object = ObjectStruct::new(class, Some(factory.make_parent(name)?), arguments.len());
-    let mut object_mut = object.borrow_mut();
-    for (index, argument) in arguments.iter().enumerate() {
-        object_mut.set_field(index, argument.clone());
-    }
-    return Ok(Some(object.clone()));
+    let factory = get_factory();
+    factory.create_object(name, arguments).map(|object| Some(object))
 }
 
 
@@ -596,6 +656,48 @@ impl ContextData {
     }
     pub fn detach_receiver(&mut self) {
         self.receiver = None;
+    }
+
+    pub fn push_frame(&mut self, frame: Option<ObjectBox<dyn Object>>) {
+        match frame {
+            Some(frame) => {
+                let mut stack = self.stack.borrow_mut();
+                let stack = stack.downcast_mut::<stack::Stack>().unwrap();
+                stack.push(frame);
+            },
+            None => {
+                let mut stack = self.stack.borrow_mut();
+                let stack = stack.downcast_mut::<stack::Stack>().unwrap();
+                let frame = create_object("Stack", &[]).unwrap().unwrap();
+                stack.push(frame);
+            }
+        }
+    }
+    pub fn pop_frame(&mut self) -> Option<ObjectBox<dyn Object>> {
+        let mut stack = self.stack.borrow_mut();
+        let stack = stack.downcast_mut::<stack::Stack>().unwrap();
+        stack.pop()
+    }
+    pub fn push(&mut self, value: ObjectBox<dyn Object>) {
+        let stack = self.stack.borrow();
+        let stack = stack.downcast_ref::<stack::Stack>().unwrap();
+        let mut stack = stack.data.last().unwrap().borrow_mut();
+        let stack = stack.downcast_mut::<stack::Stack>().unwrap();
+        stack.push(value);
+    }
+    pub fn pop(&mut self) -> Option<ObjectBox<dyn Object>> {
+        let stack = self.stack.borrow();
+        let stack = stack.downcast_ref::<stack::Stack>().unwrap();
+        let mut stack = stack.data.last().unwrap().borrow_mut();
+        let stack = stack.downcast_mut::<stack::Stack>().unwrap();
+        stack.pop()
+    }
+    pub fn top(&self) -> Option<ObjectBox<dyn Object>> {
+        let stack = self.stack.borrow();
+        let stack = stack.downcast_ref::<stack::Stack>().unwrap();
+        let stack = stack.data.last().unwrap().borrow();
+        let stack = stack.downcast_ref::<stack::Stack>().unwrap();
+        stack.data.last().map(|x| x.clone())
     }
 }
 
@@ -649,23 +751,11 @@ impl Object for Context {
 }
 
 
-fn context_new(_: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn context_new(_: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let string = context.arguments[0].clone();
     let string = string.borrow();
     let string = string.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
-    match string.value.as_str() {
-        "Stack" => {
-            let stack = create_stack();
-            return Ok(Some(stack));
-        }
-        "Logger" => {
-            let logger = create_logger();
-            return Ok(Some(logger));
-        }
-        x => {
-            return create_object(x, &context.arguments[1..]);
-        }
-    }
+    return create_object(&string.value, &context.arguments[1..]);
 }
 
 

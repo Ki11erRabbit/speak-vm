@@ -29,12 +29,9 @@ fn main() {
     ];
     
 
-    let runtime_stack = init_stack();
-
-    let mut interpreter = Interpreter::new(runtime_stack);
 
     for instruction in instructions {
-        match interpreter.run(&mut context, instruction.clone()) {
+        match Interpreter::run(&mut context, instruction.clone()) {
             false => {
                 println!("Halted");
             }

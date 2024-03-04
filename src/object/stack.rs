@@ -7,7 +7,6 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use crate::object::Method;
-use super::Context;
 use std::sync::Arc;
 use super::Fault;
 
@@ -81,7 +80,7 @@ impl Object for Stack {
     }
 }
 
-fn stack_push(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn stack_push(object: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let mut object = object.borrow_mut();
     let object = object.downcast_mut::<Stack>();
     let value = context.arguments[0].clone();
@@ -90,7 +89,7 @@ fn stack_push(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut 
     }
     Ok(None)
 }
-fn stack_pop(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn stack_pop(object: ObjectBox<dyn Object>, _: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let mut object = object.borrow_mut();
     let object = object.downcast_mut::<Stack>();
     if let Some(object) = object {

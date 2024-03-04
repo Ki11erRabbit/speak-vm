@@ -8,7 +8,6 @@ use super::Fault;
 use num_traits::Zero;
 use crate::create_type_ops;
 use crate::object::primitive::PrimitiveObject;
-use crate::Interpreter;
 use num_integer::Integer;
 use crate::object::create_boolean;
 
@@ -60,33 +59,33 @@ impl Object for IntegerObject {
     }
 }
 
-fn integer_divides(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn integer_divides(_: ObjectBox<dyn Object>, _: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn integer_shift_right(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn integer_shift_right(_: ObjectBox<dyn Object>, _: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn integer_shift_left(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn integer_shift_left(_: ObjectBox<dyn Object>, _: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn integer_bitwise_and(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn integer_bitwise_and(_: ObjectBox<dyn Object>, _: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn integer_bitwise_or(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn integer_bitwise_or(_: ObjectBox<dyn Object>, _: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn integer_bitwise_xor(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn integer_bitwise_xor(_: ObjectBox<dyn Object>, _: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
 macro_rules! create_integer_ops {
     ($type:ty, $divides:ident, $shr:ident, $shl:ident, $and:ident, $or:ident, $xor:ident) => {
-        fn $divides(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $divides(object: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let object = object.borrow();
             let object = object.downcast_ref::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             let other = context.arguments[0].borrow();
@@ -143,7 +142,7 @@ macro_rules! create_integer_ops {
             }
         }
 
-        fn $shr(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $shr(object: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object = object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             let other = context.arguments[0].borrow();
@@ -169,7 +168,7 @@ macro_rules! create_integer_ops {
             Ok(None)
         }
 
-        fn $shl(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $shl(object: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object = object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             let other = context.arguments[0].borrow();
@@ -195,7 +194,7 @@ macro_rules! create_integer_ops {
             Ok(None)
         }
 
-        fn $and(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $and(object: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object = object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             let other = context.arguments[0].borrow();
@@ -221,7 +220,7 @@ macro_rules! create_integer_ops {
             Ok(None)
         }
 
-        fn $or(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $or(object: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object = object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             let other = context.arguments[0].borrow();
@@ -247,7 +246,7 @@ macro_rules! create_integer_ops {
             Ok(None)
         }
 
-        fn $xor(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $xor(object: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object = object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             let other = context.arguments[0].borrow();
