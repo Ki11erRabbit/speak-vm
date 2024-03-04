@@ -3,12 +3,13 @@ use super::{Class, Method, ObjectBox};
 use std::collections::HashMap;
 use std::{cell::RefCell, rc::Rc};
 use crate::object::Object;
-use super::Context;
 use std::sync::Arc;
 use super::Fault;
 use num_traits::Zero;
 use crate::create_type_ops;
 use crate::object::primitive::PrimitiveObject;
+use crate::object::ContextData;
+use crate::object::create_boolean;
 
 pub struct FloatObject {
     class: Arc<Class>,
@@ -65,144 +66,144 @@ impl Object for FloatObject {
     }
 }
 
-fn float_is_nan(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn float_is_nan(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn float_is_infinity(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn float_is_infinity(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn float_is_neg_infinity(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn float_is_neg_infinity(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn float_is_finite(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn float_is_finite(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn float_is_normal(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn float_is_normal(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn float_floor(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn float_floor(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn float_ceil(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn float_ceil(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn float_nat_log(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn float_nat_log(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn float_log(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn float_log(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn float_hypotenuse(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn float_hypotenuse(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn float_sin(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn float_sin(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn float_cos(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn float_cos(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn float_tan(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn float_tan(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn float_arcsin(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn float_arcsin(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn float_arccos(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn float_arccos(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn float_arctan(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn float_arctan(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
 macro_rules! create_float_ops {
     ($type:ty, $is_nan:ident, $is_inf:ident, $is_neg_inf:ident, $is_finite:ident, $is_normal:ident, $floor:ident, $ceil:ident, $nat_log:ident, $log:ident, $hypotenuse:ident, $sin:ident, $cos:ident, $tan:ident, $arcsin:ident, $arccos:ident, $arctan:ident) => {
-        fn $is_nan(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $is_nan(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object =  object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             if object.data.is_nan() {
-                return Ok(Some(context.create_boolean(true)))
+                return Ok(Some(create_boolean(true)))
             } else {
-                return Ok(Some(context.create_boolean(false)))
+                return Ok(Some(create_boolean(false)))
             }
         }
 
-        fn $is_inf(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $is_inf(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object =  object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             if object.data.is_infinite() {
-                return Ok(Some(context.create_boolean(true)))
+                return Ok(Some(create_boolean(true)))
             } else {
-                return Ok(Some(context.create_boolean(false)))
+                return Ok(Some(create_boolean(false)))
             }
         }
 
-        fn $is_neg_inf(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $is_neg_inf(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object =  object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             if object.data.is_infinite() && object.data.is_sign_negative() {
-                return Ok(Some(context.create_boolean(true)))
+                return Ok(Some(create_boolean(true)))
             } else {
-                return Ok(Some(context.create_boolean(false)))
+                return Ok(Some(create_boolean(false)))
             }
         }
 
-        fn $is_finite(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $is_finite(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object =  object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             if object.data.is_finite() {
-                return Ok(Some(context.create_boolean(true)))
+                return Ok(Some(create_boolean(true)))
             } else {
-                return Ok(Some(context.create_boolean(false)))
+                return Ok(Some(create_boolean(false)))
             }
         }
 
-        fn $is_normal(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $is_normal(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object =  object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             if object.data.is_normal() {
-                return Ok(Some(context.create_boolean(true)))
+                return Ok(Some(create_boolean(true)))
             } else {
-                return Ok(Some(context.create_boolean(false)))
+                return Ok(Some(create_boolean(false)))
             }
         }
 
-        fn $floor(object: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $floor(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object =  object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             object.data = object.data.floor();
             Ok(None)
         }
 
-        fn $ceil(object: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $ceil(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object =  object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             object.data = object.data.ceil();
             Ok(None)
         }
 
-        fn $nat_log(object: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $nat_log(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object =  object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             object.data = object.data.ln();
             Ok(None)
         }
 
-        fn $log(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $log(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object =  object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             let base = context.arguments[0].borrow();
@@ -214,7 +215,7 @@ macro_rules! create_float_ops {
             Ok(None)
         }
         
-        fn $hypotenuse(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $hypotenuse(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object =  object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             let other = context.arguments[0].borrow();
@@ -226,42 +227,42 @@ macro_rules! create_float_ops {
             Ok(None)
         }
 
-        fn $sin(object: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $sin(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object =  object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             object.data = object.data.sin();
             Ok(None)
         }
 
-        fn $cos(object: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $cos(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object =  object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             object.data = object.data.cos();
             Ok(None)
         }
 
-        fn $tan(object: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $tan(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object =  object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             object.data = object.data.tan();
             Ok(None)
         }
 
-        fn $arcsin(object: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $arcsin(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object =  object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             object.data = object.data.asin();
             Ok(None)
         }
         
-        fn $arccos(object: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $arccos(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object =  object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             object.data = object.data.acos();
             Ok(None)
         }
 
-        fn $arctan(object: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $arctan(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object =  object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             object.data = object.data.atan();

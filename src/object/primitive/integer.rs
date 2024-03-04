@@ -2,7 +2,7 @@ use super::{Class, Method, ObjectBox};
 use std::collections::HashMap;
 use std::{cell::RefCell, rc::Rc};
 use crate::object::Object;
-use super::Context;
+use crate::object::ContextData;
 use std::sync::Arc;
 use super::Fault;
 use num_traits::Zero;
@@ -10,6 +10,7 @@ use crate::create_type_ops;
 use crate::object::primitive::PrimitiveObject;
 use crate::Interpreter;
 use num_integer::Integer;
+use crate::object::create_boolean;
 
 
 
@@ -59,90 +60,90 @@ impl Object for IntegerObject {
     }
 }
 
-fn integer_divides(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn integer_divides(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn integer_shift_right(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn integer_shift_right(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn integer_shift_left(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn integer_shift_left(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn integer_bitwise_and(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn integer_bitwise_and(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn integer_bitwise_or(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn integer_bitwise_or(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn integer_bitwise_xor(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn integer_bitwise_xor(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
 macro_rules! create_integer_ops {
     ($type:ty, $divides:ident, $shr:ident, $shl:ident, $and:ident, $or:ident, $xor:ident) => {
-        fn $divides(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $divides(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let object = object.borrow();
             let object = object.downcast_ref::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             let other = context.arguments[0].borrow();
             if let Some(other) = other.downcast_ref::<PrimitiveObject<i64>>() {
                 if object.data.is_multiple_of(&(other.data as $type)) {
-                    Ok(Some(context.create_boolean(true)))
+                    Ok(Some(create_boolean(true)))
                 } else {
-                    Ok(Some(context.create_boolean(false)))
+                    Ok(Some(create_boolean(false)))
                 }
             } else if let Some(other) = other.downcast_ref::<PrimitiveObject<u64>>() {
                 if object.data.is_multiple_of(&(other.data as $type)) {
-                    Ok(Some(context.create_boolean(true)))
+                    Ok(Some(create_boolean(true)))
                 } else {
-                    Ok(Some(context.create_boolean(false)))
+                    Ok(Some(create_boolean(false)))
                 }
             } else if let Some(other) = other.downcast_ref::<PrimitiveObject<i32>>() {
                 if object.data.is_multiple_of(&(other.data as $type)) {
-                    Ok(Some(context.create_boolean(true)))
+                    Ok(Some(create_boolean(true)))
                 } else {
-                    Ok(Some(context.create_boolean(false)))
+                    Ok(Some(create_boolean(false)))
                 }
             } else if let Some(other) = other.downcast_ref::<PrimitiveObject<u32>>() {
                 if object.data.is_multiple_of(&(other.data as $type)) {
-                    Ok(Some(context.create_boolean(true)))
+                    Ok(Some(create_boolean(true)))
                 } else {
-                    Ok(Some(context.create_boolean(false)))
+                    Ok(Some(create_boolean(false)))
                 }
             } else if let Some(other) = other.downcast_ref::<PrimitiveObject<i16>>() {
                 if object.data.is_multiple_of(&(other.data as $type)) {
-                    Ok(Some(context.create_boolean(true)))
+                    Ok(Some(create_boolean(true)))
                 } else {
-                    Ok(Some(context.create_boolean(false)))
+                    Ok(Some(create_boolean(false)))
                 }
             } else if let Some(other) = other.downcast_ref::<PrimitiveObject<u16>>() {
                 if object.data.is_multiple_of(&(other.data as $type)) {
-                    Ok(Some(context.create_boolean(true)))
+                    Ok(Some(create_boolean(true)))
                 } else {
-                    Ok(Some(context.create_boolean(false)))
+                    Ok(Some(create_boolean(false)))
                 }
             } else if let Some(other) = other.downcast_ref::<PrimitiveObject<i8>>() {
                 if object.data.is_multiple_of(&(other.data as $type)) {
-                    Ok(Some(context.create_boolean(true)))
+                    Ok(Some(create_boolean(true)))
                 } else {
-                    Ok(Some(context.create_boolean(false)))
+                    Ok(Some(create_boolean(false)))
                 }
             } else if let Some(other) = other.downcast_ref::<PrimitiveObject<u8>>() {
                 if object.data.is_multiple_of(&(other.data as $type)) {
-                    Ok(Some(context.create_boolean(true)))
+                    Ok(Some(create_boolean(true)))
                 } else {
-                    Ok(Some(context.create_boolean(false)))
+                    Ok(Some(create_boolean(false)))
                 }
             } else {
                 Err(Fault::InvalidType)
             }
         }
 
-        fn $shr(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $shr(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object = object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             let other = context.arguments[0].borrow();
@@ -168,7 +169,7 @@ macro_rules! create_integer_ops {
             Ok(None)
         }
 
-        fn $shl(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $shl(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object = object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             let other = context.arguments[0].borrow();
@@ -194,7 +195,7 @@ macro_rules! create_integer_ops {
             Ok(None)
         }
 
-        fn $and(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $and(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object = object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             let other = context.arguments[0].borrow();
@@ -220,7 +221,7 @@ macro_rules! create_integer_ops {
             Ok(None)
         }
 
-        fn $or(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $or(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object = object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             let other = context.arguments[0].borrow();
@@ -246,7 +247,7 @@ macro_rules! create_integer_ops {
             Ok(None)
         }
 
-        fn $xor(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $xor(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             let mut object = object.borrow_mut();
             let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
             let other = context.arguments[0].borrow();

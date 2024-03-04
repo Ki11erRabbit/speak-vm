@@ -9,6 +9,7 @@ use crate::object::Method;
 use std::sync::Arc;
 
 use super::bytecode::ByteCode;
+use super::ContextData;
 
 
 
@@ -57,7 +58,7 @@ impl Object for Block {
     }
 }
 
-fn value(object: ObjectBox<dyn Object>, context: &mut Context, interpreter: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn value(object: ObjectBox<dyn Object>, context: &mut ContextData, interpreter: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let object = object.borrow();
     let object = object.downcast_ref::<Block>().expect("Expected block");
     for code in object.bytecode.iter() {

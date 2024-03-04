@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::rc::Rc;
 use std::cell::RefCell;
 use crate::object::Interpreter;
+use super::ContextData;
 
 
 pub mod integer;
@@ -96,35 +97,35 @@ impl Object for NumberObject {
     }
 }
 
-fn number_add(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn number_add(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn number_subtract(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn number_subtract(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn number_multiply(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn number_multiply(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn number_divide(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn number_divide(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn number_modulo(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn number_modulo(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn number_abs(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn number_abs(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn number_pow(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn number_pow(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn number_is_zero(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn number_is_zero(_: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     Err(Fault::NotImplemented)
 }
 
@@ -133,7 +134,7 @@ fn number_is_zero(_: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter
 macro_rules! create_type_ops {
     ($type:ty, $add_name:ident, $sub_name:ident, $mul_name:ident, $div_name:ident, $mod_name:ident) => {
 
-        fn $add_name(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut crate::object::Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $add_name(object: ObjectBox<dyn Object>, context: &mut crate::object::ContextData, _: &mut crate::object::Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             {
                 let mut object = object.borrow_mut();
                 let object = object.downcast_mut::<crate::object::primitive::PrimitiveObject<$type>>();
@@ -178,7 +179,7 @@ macro_rules! create_type_ops {
             Ok(None)
         }
 
-        fn $sub_name(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut crate::object::Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $sub_name(object: ObjectBox<dyn Object>, context: &mut crate::object::ContextData, _: &mut crate::object::Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             {
                 let mut object = object.borrow_mut();
                 let object = object.downcast_mut::<crate::object::primitive::PrimitiveObject<$type>>();
@@ -224,7 +225,7 @@ macro_rules! create_type_ops {
         }
         
 
-        fn $mul_name(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut crate::object::Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $mul_name(object: ObjectBox<dyn Object>, context: &mut crate::object::ContextData, _: &mut crate::object::Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             {
                 let mut object = object.borrow_mut();
                 let object = object.downcast_mut::<crate::object::primitive::PrimitiveObject<$type>>();
@@ -269,7 +270,7 @@ macro_rules! create_type_ops {
             Ok(None)
         }
 
-        fn $div_name(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut crate::object::Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $div_name(object: ObjectBox<dyn Object>, context: &mut crate::object::ContextData, _: &mut crate::object::Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             {
                 let mut object = object.borrow_mut();
                 let object = object.downcast_mut::<crate::object::primitive::PrimitiveObject<$type>>();
@@ -343,7 +344,7 @@ macro_rules! create_type_ops {
             Ok(None)
         }
 
-        fn $mod_name(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut crate::object::Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $mod_name(object: ObjectBox<dyn Object>, context: &mut crate::object::ContextData, _: &mut crate::object::Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
             {
                 let mut object = object.borrow_mut();
                 let object = object.downcast_mut::<crate::object::primitive::PrimitiveObject<$type>>();

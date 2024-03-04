@@ -14,7 +14,6 @@ use std::rc::Rc;
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::sync::RwLock;
-use std::rc::Weak;
 
 use self::interpreter::Interpreter;
 use self::log::Logger;
@@ -127,46 +126,46 @@ impl BaseObject {
     }
 }
 
-fn obj_clone(object: ObjectBox<dyn Object>, _: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn obj_clone(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let object = object.borrow();
     let new_object = object.duplicate();
     Result::Ok(Some(new_object))
 }
 
-fn obj_equals(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn obj_equals(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let object_ptr = object.as_ptr();
     let other_ptr = context.arguments[0].as_ptr();
     if std::ptr::eq(object_ptr, other_ptr) {
-        Ok(Some(context.create_boolean(true)))
+        Ok(Some(create_boolean(true)))
     } else {
-        Ok(Some(context.create_boolean(false)))
+        Ok(Some(create_boolean(false)))
     }
 }
 
-fn obj_hash(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn obj_hash(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let object = object.as_ptr();
     let string = format!("{:p}", object);
     let mut hasher = std::hash::DefaultHasher::new();
     string.hash(&mut hasher);
     let hash = hasher.finish();
-    Ok(Some(context.create_u64(hash as u64)))
+    Ok(Some(create_u64(hash as u64)))
 }
 
-fn obj_to_string(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn obj_to_string(object: ObjectBox<dyn Object>, _: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let object_ptr = object.as_ptr();
     let string = format!("Object at {:p}", object_ptr);
-    Ok(Some(context.create_string(string)))
+    Ok(Some(create_string(string)))
 }
 
-fn obj_order(object: ObjectBox<dyn Object>, context: &mut Context, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn obj_order(object: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
     let object_ptr = object.as_ptr();
     let other_ptr = context.arguments[0].as_ptr();
     if object_ptr as *const () < other_ptr as *const () {
-        Ok(Some(context.create_i8(-1)))
+        Ok(Some(create_i8(-1)))
     } else if object_ptr as *const () > other_ptr as *const () {
-        Ok(Some(context.create_i8(1)))
+        Ok(Some(create_i8(1)))
     } else {
-        Ok(Some(context.create_i8(0)))
+        Ok(Some(create_i8(0)))
     }
 }
 
@@ -245,7 +244,7 @@ unsafe impl Sync for Method {}
 
 pub enum Method {
     RustMethod {
-        fun: Box<dyn Fn(ObjectBox<dyn Object>, &mut Context, &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault>>,
+        fun: Box<dyn Fn(ObjectBox<dyn Object>, &mut ContextData, &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault>>,
     },
     BytecodeMethod {
         block: ObjectBox<dyn Object>,
@@ -328,7 +327,7 @@ pub struct ObjectFactory {
 }
 
 impl ObjectFactory {
-    pub fn new() -> ObjectFactory {
+    fn new() -> ObjectFactory {
         let base_object_class = BaseObject::make_class();
         let mut context = ObjectFactory {
             classes: HashMap::new(),
@@ -380,76 +379,199 @@ impl ObjectFactory {
 
         context
     }
-    pub fn create_base_object(&self) -> ObjectBox<dyn Object> {
+    fn create_base_object(&self) -> ObjectBox<dyn Object> {
         BaseObject::make_object(self.get_class("Object").unwrap())
     }
-    pub fn create_boolean(&self, value: bool) -> ObjectBox<dyn Object> {
+    fn create_boolean(&self, value: bool) -> ObjectBox<dyn Object> {
         BooleanObject::make_object(self.get_class("Boolean").unwrap(), self.create_base_object(), value)
     }
-    pub fn create_number(&self) -> ObjectBox<dyn Object> {
+    fn create_number(&self) -> ObjectBox<dyn Object> {
         NumberObject::make_object(self.get_class("Number").unwrap(), self.create_base_object())
     }
-    pub fn create_integer(&self) -> ObjectBox<dyn Object> {
+    fn create_integer(&self) -> ObjectBox<dyn Object> {
         IntegerObject::make_object(self.get_class("Integer").unwrap(), self.create_number())
     }
-    pub fn create_i64(&self, value: i64) -> ObjectBox<dyn Object> {
+    fn create_i64(&self, value: i64) -> ObjectBox<dyn Object> {
         I64Object::make_object(self.get_class("I64").unwrap(), self.create_integer(), value)
     }
-    pub fn create_u64(&self, value: u64) -> ObjectBox<dyn Object> {
+    fn create_u64(&self, value: u64) -> ObjectBox<dyn Object> {
         U64Object::make_object(self.get_class("U64").unwrap(), self.create_integer(), value)
     }
-    pub fn create_i32(&self, value: i32) -> ObjectBox<dyn Object> {
+    fn create_i32(&self, value: i32) -> ObjectBox<dyn Object> {
         I32Object::make_object(self.get_class("I32").unwrap(), self.create_integer(), value)
     }
-    pub fn create_u32(&self, value: u32) -> ObjectBox<dyn Object> {
+    fn create_u32(&self, value: u32) -> ObjectBox<dyn Object> {
         U32Object::make_object(self.get_class("U32").unwrap(), self.create_integer(), value)
     }
-    pub fn create_i16(&self, value: i16) -> ObjectBox<dyn Object> {
+    fn create_i16(&self, value: i16) -> ObjectBox<dyn Object> {
         I16Object::make_object(self.get_class("I16").unwrap(), self.create_integer(), value)
     }
-    pub fn create_u16(&self, value: u16) -> ObjectBox<dyn Object> {
+    fn create_u16(&self, value: u16) -> ObjectBox<dyn Object> {
         U16Object::make_object(self.get_class("U16").unwrap(), self.create_integer(), value)
     }
-    pub fn create_i8(&self, value: i8) -> ObjectBox<dyn Object> {
+    fn create_i8(&self, value: i8) -> ObjectBox<dyn Object> {
         I8Object::make_object(self.get_class("I8").unwrap(), self.create_integer(), value)
     }
-    pub fn create_u8(&self, value: u8) -> ObjectBox<dyn Object> {
+    fn create_u8(&self, value: u8) -> ObjectBox<dyn Object> {
         U8Object::make_object(self.get_class("U8").unwrap(), self.create_integer(), value)
     }
-    pub fn create_float(&self) -> ObjectBox<dyn Object> {
+    fn create_float(&self) -> ObjectBox<dyn Object> {
         FloatObject::make_object(self.get_class("Float").unwrap(), self.create_number())
     }
-    pub fn create_f64(&self, value: f64) -> ObjectBox<dyn Object> {
+    fn create_f64(&self, value: f64) -> ObjectBox<dyn Object> {
         F64Object::make_object(self.get_class("F64").unwrap(), self.create_float(), value)
     }
-    pub fn create_f32(&self, value: f32) -> ObjectBox<dyn Object> {
+    fn create_f32(&self, value: f32) -> ObjectBox<dyn Object> {
         F32Object::make_object(self.get_class("F32").unwrap(), self.create_float(), value)
     }
-    pub fn create_string(&self, value: String) -> ObjectBox<dyn Object> {
+    fn create_string(&self, value: String) -> ObjectBox<dyn Object> {
         StringObject::make_object(self.get_class("String").unwrap(), self.create_base_object(), value)
     }
-    pub fn create_character(&self, value: char) -> ObjectBox<dyn Object> {
+    fn create_character(&self, value: char) -> ObjectBox<dyn Object> {
         CharacterObject::make_object(self.get_class("Char").unwrap(), self.create_base_object(), value)
     }
-    pub fn create_message(&self, index: &str) -> ObjectBox<dyn Object> {
+    fn create_message(&self, index: &str) -> ObjectBox<dyn Object> {
         Message::make_object(self.get_class("Message").unwrap(), self.create_base_object(), index.to_string())
     }
-    pub fn create_logger(&self) -> ObjectBox<dyn Object> {
+    fn create_logger(&self) -> ObjectBox<dyn Object> {
         Logger::make_object(self.get_class("Logger").unwrap(), self.create_base_object())
     }
-    pub fn init_stack(&self) -> ObjectBox<dyn Object> {
-        let frame = vec![stack::Stack::make_object(self.get_class("Stack").unwrap(), self.create_base_object())];
+    fn init_stack(&self) -> ObjectBox<dyn Object> {
+        let framedata = vec![Context::make_object()];
+        let frame = vec![stack::Stack::make_object_with_stack(self.get_class("Stack").unwrap(), self.create_base_object(),framedata)];
         stack::Stack::make_object_with_stack(self.get_class("Stack").unwrap(), self.create_base_object(), frame)
     }
+    fn create_stack(&self) -> ObjectBox<dyn Object> {
+        stack::Stack::make_object(self.get_class("Stack").unwrap(), self.create_base_object())
+    }
 
-    pub fn get_class(&self, name: &str) -> Option<Arc<Class>> {
+    fn get_class(&self, name: &str) -> Option<Arc<Class>> {
         self.classes.get(name).cloned()
     }
 
-    pub fn add_class(&mut self, name: &str, class: Class) {
+    fn add_class(&mut self, name: &str, class: Class) {
         self.classes.insert(name.to_string(), Arc::new(class));
     }
+
+    fn make_parent(&mut self, _name: &str) -> Result<ObjectBox<dyn Object>, Fault> {
+        unimplemented!("need logic for storing parents of objects")
+    }
 }
+
+fn get_factory<'a>() -> std::sync::RwLockReadGuard<'a, ObjectFactory> {
+    loop {
+        match CLASSES.try_read() {
+            Ok(factory) => {
+                return factory;
+            }
+            Err(_) => {
+                std::thread::yield_now();
+            }
+        }
+    }
+}
+
+fn get_factory_mut<'a>() -> std::sync::RwLockWriteGuard<'a, ObjectFactory> {
+    loop {
+        match CLASSES.try_write() {
+            Ok(factory) => {
+                return factory;
+            }
+            Err(_) => {
+                std::thread::yield_now();
+            }
+        }
+    }
+}
+
+pub fn create_base_object() -> ObjectBox<dyn Object> {
+    get_factory().create_base_object()
+}
+
+pub fn create_boolean(value: bool) -> ObjectBox<dyn Object> {
+    get_factory().create_boolean(value)
+}
+
+pub fn create_i64(value: i64) -> ObjectBox<dyn Object> {
+    get_factory().create_i64(value)
+}
+
+pub fn create_u64(value: u64) -> ObjectBox<dyn Object> {
+    get_factory().create_u64(value)
+}
+
+pub fn create_i32(value: i32) -> ObjectBox<dyn Object> {
+    get_factory().create_i32(value)
+}
+
+pub fn create_u32(value: u32) -> ObjectBox<dyn Object> {
+    get_factory().create_u32(value)
+}
+
+pub fn create_i16(value: i16) -> ObjectBox<dyn Object> {
+    get_factory().create_i16(value)
+}
+
+pub fn create_u16(value: u16) -> ObjectBox<dyn Object> {
+    get_factory().create_u16(value)
+}
+
+pub fn create_i8(value: i8) -> ObjectBox<dyn Object> {
+    get_factory().create_i8(value)
+}
+
+pub fn create_u8(value: u8) -> ObjectBox<dyn Object> {
+    get_factory().create_u8(value)
+}
+
+pub fn create_f64(value: f64) -> ObjectBox<dyn Object> {
+    get_factory().create_f64(value)
+}
+
+pub fn create_f32(value: f32) -> ObjectBox<dyn Object> {
+    get_factory().create_f32(value)
+}
+
+pub fn create_string(value: String) -> ObjectBox<dyn Object> {
+    get_factory().create_string(value)
+}
+
+pub fn create_character(value: char) -> ObjectBox<dyn Object> {
+    get_factory().create_character(value)
+}
+
+pub fn create_message(index: &str) -> ObjectBox<dyn Object> {
+    get_factory().create_message(index)
+}
+
+pub fn create_logger() -> ObjectBox<dyn Object> {
+    get_factory().create_logger()
+}
+
+pub fn init_stack() -> ObjectBox<dyn Object> {
+    get_factory().init_stack()
+}
+
+pub fn create_stack() -> ObjectBox<dyn Object> {
+    get_factory().create_stack()
+}
+
+pub fn add_class(name: &str, class: Class) {
+    get_factory_mut().add_class(name, class);
+}
+
+
+pub fn create_object(name: &str, arguments: &[ObjectBox<dyn Object>]) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+    let mut factory = get_factory_mut();
+    let class = factory.get_class(name).ok_or(Fault::InvalidType)?;
+    let object = ObjectStruct::new(class, Some(factory.make_parent(name)?), arguments.len());
+    let mut object_mut = object.borrow_mut();
+    for (index, argument) in arguments.iter().enumerate() {
+        object_mut.set_field(index, argument.clone());
+    }
+    return Ok(Some(object.clone()));
+}
+
 
 pub struct ContextData {
     pub stack: ObjectBox<dyn Object>,
@@ -465,54 +587,48 @@ impl ContextData {
             receiver: None,
         }
     }
+    pub fn make_object(stack: ObjectBox<dyn Object>) -> ObjectBox<Self> {
+        Rc::new(RefCell::new(ContextData::new(stack)))
+    }
+
+    pub fn attach_receiver(&mut self, receiver: ObjectBox<dyn Object>) {
+        self.receiver = Some(receiver);
+    }
+    pub fn detach_receiver(&mut self) {
+        self.receiver = None;
+    }
 }
 
+
 pub struct Context {
-    factory: Arc<RwLock<ObjectFactory>>,
-    data: ContextData,
+    class: Arc<Class>,
+    super_object: Option<ObjectBox<dyn Object>>,
 }
 
 impl Context {
     fn make_class(parent: Arc<Class>) -> Class {
-        let methods = HashMap::new();
+        let mut methods = HashMap::new();
+        methods.insert("new".to_string(), Arc::new(Method::RustMethod { fun: Box::new(context_new) }));
         Class::new(Some(parent), methods)
     }
 
     pub fn new() -> Context {
-        let base_object_class = BaseObject::make_class();
-        let factory = Arc::new(RwLock::new(ObjectFactory::new()));
-        let mut context = Context {
-            factory,
-            data: ContextData::new(factory.read().unwrap().init_stack()),
+        let base_object_class = Arc::new(BaseObject::make_class());
+        let context = Context {
+            class: Arc::new(Context::make_class(base_object_class)),
+            super_object: Some(create_base_object()),
         };
         context
     }
-
-}
-
-pub struct ContextObject {
-    class: Arc<Class>,
-    super_object: Option<ObjectBox<dyn Object>>,
-    context: Weak<RefCell<Context>>,
-}
-
-impl ContextObject {
-    pub fn make_class(parent: Arc<Class>) -> Class {
-        let methods = HashMap::new();
-        Class::new(Some(parent), methods)
+    pub fn make_object() -> ObjectBox<dyn Object> {
+        let context = Context::new();
+        Rc::new(RefCell::new(context)) as ObjectBox<dyn Object>
     }
-    pub fn make_object(class: Arc<Class>, parent: ObjectBox<dyn Object>, context: Weak<RefCell<Context>>) -> ObjectBox<dyn Object> {
-        Rc::new(RefCell::new(ContextObject {
-            class,
-            super_object: Some(parent),
-            context,
-        })) as ObjectBox<dyn Object>
-    }
+
 }
 
-
-impl Object for ContextObject {
-    fn get_class(&self) -> Arc<Class> { 
+impl Object for Context {
+    fn get_class(&self) -> Arc<Class> {
         self.class.clone()
     }
     fn get_super_object(&self) -> Option<ObjectBox<dyn Object>> {
@@ -528,10 +644,29 @@ impl Object for ContextObject {
         panic!("Context does not have a size");
     }
     fn duplicate(&self) -> ObjectBox<dyn Object> {
-        ContextObject::make_object(self.class.clone(), self.super_object.clone().unwrap(), self.context.clone())
+        Context::make_object()
     }
 }
 
+
+fn context_new(_: ObjectBox<dyn Object>, context: &mut ContextData, _: &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+    let string = context.arguments[0].clone();
+    let string = string.borrow();
+    let string = string.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
+    match string.value.as_str() {
+        "Stack" => {
+            let stack = create_stack();
+            return Ok(Some(stack));
+        }
+        "Logger" => {
+            let logger = create_logger();
+            return Ok(Some(logger));
+        }
+        x => {
+            return create_object(x, &context.arguments[1..]);
+        }
+    }
+}
 
 
 

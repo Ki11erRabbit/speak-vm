@@ -1,4 +1,4 @@
-use super::{Context, Message};
+use super::{create_message, create_stack, Context, ContextData, Message};
 use super::{Object, ObjectBox};
 use super::bytecode::{ByteCode, SpecialInstruction};
 use super::stack::Stack;
@@ -16,7 +16,7 @@ impl Interpreter {
         Self { stack }
     }
 
-    pub fn run(&mut self, context: &mut Context, bytecode: ByteCode) -> bool {
+    pub fn run(&mut self, context: &mut ContextData, bytecode: ByteCode) -> bool {
         match bytecode {
             ByteCode::Halt => return false,
             ByteCode::NoOp => {}
@@ -45,7 +45,7 @@ impl Interpreter {
         stack_frame.push(value);
     }
 
-    fn access_temp(&mut self, index: usize, context: &mut Context) {
+    fn access_temp(&mut self, index: usize, context: &mut ContextData) {
         let stack = self.stack.borrow();
         let stack = stack.downcast_ref::<Stack>().expect("Expected stack");
         let stack_frame = stack.data.last().expect("Expected stack frame").clone();
@@ -78,7 +78,7 @@ impl Interpreter {
         object.set_field(index, value);
     }
 
-    fn store_temp(&mut self, index: usize, context: &mut Context) {
+    fn store_temp(&mut self, index: usize, context: &mut ContextData) {
         let stack = self.stack.borrow();
         let stack = stack.downcast_ref::<Stack>().expect("Expected stack");
         let stack_frame = stack.data.last().expect("Expected stack frame").clone();
@@ -88,7 +88,7 @@ impl Interpreter {
         context.arguments[index] = value;
     }
 
-    fn send_msg(&mut self, arg: usize, msg_index: String, context: &mut Context) {
+    fn send_msg(&mut self, arg: usize, msg_index: String, context: &mut ContextData) {
         let stack = self.stack.clone();
         let mut stack = stack.borrow_mut();
         let stack = stack.downcast_mut::<Stack>().expect("Expected Stack");
@@ -103,15 +103,14 @@ impl Interpreter {
         let object = stack_frame.data.last().expect("Stack was empty").clone();
         let borrowed_object = object.borrow();
 
-        let message_class = context.get_class("Message").expect("Expected Message class").clone();
-        let message = Message::make_object(message_class, context.create_base_object(), msg_index);
+        let message = create_message(&msg_index);
 
         let method = borrowed_object.process_message(message);
         drop(borrowed_object);
         if let Some(method) = method {
             match *method {
                 Method::RustMethod { ref fun } => {
-                    let new_frame = Stack::make_object(context.get_class("Stack").unwrap(), context.create_base_object());
+                    let new_frame = create_stack();
                     stack.push(new_frame);
                     match fun(object.clone(), context, self) {
                         Ok(Some(result)) => stack_frame.push(result),
@@ -121,7 +120,7 @@ impl Interpreter {
                     stack.pop();
                 }
                 Method::BytecodeMethod { ref block } => {
-                    let stack_frame = Stack::make_object(context.get_class("Stack").unwrap(), context.create_base_object());
+                    let stack_frame = create_stack();
                     stack.push(stack_frame);
                     context.attach_receiver(object.clone());
                     let object = block.borrow();
@@ -136,7 +135,7 @@ impl Interpreter {
         }
     }
 
-    fn send_super_msg(&mut self, arg: usize, msg_index: String, context: &mut Context) {
+    fn send_super_msg(&mut self, arg: usize, msg_index: String, context: &mut ContextData) {
         let stack = self.stack.clone();
         let mut stack = stack.borrow_mut();
         let stack = stack.downcast_mut::<Stack>().expect("Expected Stack");
@@ -151,8 +150,7 @@ impl Interpreter {
         let object = stack_frame.data.last().expect("Stack was empty").clone();
         let borrowed_object = object.borrow();
 
-        let message_class = context.get_class("Message").expect("Expected Message class").clone();
-        let message = Message::make_object(message_class, context.create_base_object(), msg_index);
+        let message = create_message(&msg_index);
         
         let parent = borrowed_object.get_super_object().expect("Expected super object");
         let borrowed_parent = parent.borrow();
@@ -162,7 +160,7 @@ impl Interpreter {
         if let Some(method) = method {
             match *method {
                 Method::RustMethod { ref fun } => {
-                    let new_frame = Stack::make_object(context.get_class("Stack").unwrap(), context.create_base_object());
+                    let new_frame = create_stack();
                     stack.push(new_frame);
                     match fun(parent.clone(), context, self) {
                         Ok(Some(result)) => stack_frame.push(result),
@@ -172,7 +170,7 @@ impl Interpreter {
                     stack.pop();
                 }
                 Method::BytecodeMethod { ref block } => {
-                    let stack_frame = Stack::make_object(context.get_class("Stack").unwrap(), context.create_base_object());
+                    let stack_frame = create_stack();
                     stack.push(stack_frame);
                     context.attach_receiver(parent);
                     let object = block.borrow();
