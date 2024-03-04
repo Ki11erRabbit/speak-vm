@@ -4,15 +4,20 @@ pub mod bytecode;
 pub mod interpreter;
 pub mod block;
 pub mod string;
+pub mod log;
 
+use lazy_static::lazy_static;
 use std::sync::Arc;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::hash::Hash;
 use std::hash::Hasher;
+use std::sync::RwLock;
+use std::rc::Weak;
 
 use self::interpreter::Interpreter;
+use self::log::Logger;
 use self::primitive::boolean::BooleanObject;
 use self::primitive::character::CharacterObject;
 use self::primitive::float::{F32Object, F64Object, FloatObject};
@@ -25,6 +30,7 @@ pub enum Fault {
     InvalidOperation,
     InvalidType,
     DivideByZero,
+    IO(std::io::Error),
 }
 
 
@@ -234,6 +240,9 @@ impl Class {
     }
 }
 
+unsafe impl Send for Method {}
+unsafe impl Sync for Method {}
+
 pub enum Method {
     RustMethod {
         fun: Box<dyn Fn(ObjectBox<dyn Object>, &mut Context, &mut Interpreter) -> Result<Option<ObjectBox<dyn Object>>, Fault>>,
@@ -305,28 +314,26 @@ impl Object for Message {
     }
 }
 
-
-pub struct Context {
-    classes: HashMap<String, Arc<Class>>,
-    pub arguments: Vec<ObjectBox<dyn Object>>,
-    pub receiver: Option<ObjectBox<dyn Object>>,
+lazy_static! {
+    static ref CLASSES: RwLock<ObjectFactory> = {
+        let factory = ObjectFactory::new();
+        RwLock::new(factory)
+    };
 }
 
-impl Context {
-    /*fn make_class(parent: &'a Class) -> Class<'a> {
-        let methods = vec![];
-        Class::new("Context", Some(parent), methods)
-    }*/
 
-    pub fn new() -> Context {
+
+pub struct ObjectFactory {
+    classes: HashMap<String, Arc<Class>>,
+}
+
+impl ObjectFactory {
+    pub fn new() -> ObjectFactory {
         let base_object_class = BaseObject::make_class();
-        let classes = HashMap::new();
-        let arguments = vec![];
-        let mut context = Context {
-            classes,
-            arguments,
-            receiver: None,
+        let mut context = ObjectFactory {
+            classes: HashMap::new(),
         };
+
         context.add_class("Object", base_object_class);
         let base_class = context.get_class("Object").unwrap();
         let message_class = Message::make_class(base_class.clone());
@@ -368,18 +375,11 @@ impl Context {
         context.add_class("Stack", stack_class);
         let block_class = block::Block::make_class(base_class.clone());
         context.add_class("Block", block_class);
+        let logger_class = Logger::make_class(base_class.clone());
+        context.add_class("Logger", logger_class);
 
         context
     }
-
-    pub fn get_class(&self, name: &str) -> Option<Arc<Class>> {
-        self.classes.get(name).cloned()
-    }
-
-    pub fn add_class(&mut self, name: &str, class: Class) {
-        self.classes.insert(name.to_string(), Arc::new(class));
-    }
-
     pub fn create_base_object(&self) -> ObjectBox<dyn Object> {
         BaseObject::make_object(self.get_class("Object").unwrap())
     }
@@ -434,13 +434,101 @@ impl Context {
     pub fn create_message(&self, index: &str) -> ObjectBox<dyn Object> {
         Message::make_object(self.get_class("Message").unwrap(), self.create_base_object(), index.to_string())
     }
-
-    pub fn attach_receiver(&mut self, receiver: ObjectBox<dyn Object>) {
-        self.receiver = Some(receiver);
+    pub fn create_logger(&self) -> ObjectBox<dyn Object> {
+        Logger::make_object(self.get_class("Logger").unwrap(), self.create_base_object())
+    }
+    pub fn init_stack(&self) -> ObjectBox<dyn Object> {
+        let frame = vec![stack::Stack::make_object(self.get_class("Stack").unwrap(), self.create_base_object())];
+        stack::Stack::make_object_with_stack(self.get_class("Stack").unwrap(), self.create_base_object(), frame)
     }
 
-    pub fn take_receiver(&mut self) -> Option<ObjectBox<dyn Object>> {
-        self.receiver.take()
+    pub fn get_class(&self, name: &str) -> Option<Arc<Class>> {
+        self.classes.get(name).cloned()
+    }
+
+    pub fn add_class(&mut self, name: &str, class: Class) {
+        self.classes.insert(name.to_string(), Arc::new(class));
+    }
+}
+
+pub struct ContextData {
+    pub stack: ObjectBox<dyn Object>,
+    pub arguments: Vec<ObjectBox<dyn Object>>,
+    pub receiver: Option<ObjectBox<dyn Object>>,
+}
+
+impl ContextData {
+    pub fn new(stack: ObjectBox<dyn Object>) -> ContextData {
+        ContextData {
+            stack,
+            arguments: vec![],
+            receiver: None,
+        }
+    }
+}
+
+pub struct Context {
+    factory: Arc<RwLock<ObjectFactory>>,
+    data: ContextData,
+}
+
+impl Context {
+    fn make_class(parent: Arc<Class>) -> Class {
+        let methods = HashMap::new();
+        Class::new(Some(parent), methods)
+    }
+
+    pub fn new() -> Context {
+        let base_object_class = BaseObject::make_class();
+        let factory = Arc::new(RwLock::new(ObjectFactory::new()));
+        let mut context = Context {
+            factory,
+            data: ContextData::new(factory.read().unwrap().init_stack()),
+        };
+        context
+    }
+
+}
+
+pub struct ContextObject {
+    class: Arc<Class>,
+    super_object: Option<ObjectBox<dyn Object>>,
+    context: Weak<RefCell<Context>>,
+}
+
+impl ContextObject {
+    pub fn make_class(parent: Arc<Class>) -> Class {
+        let methods = HashMap::new();
+        Class::new(Some(parent), methods)
+    }
+    pub fn make_object(class: Arc<Class>, parent: ObjectBox<dyn Object>, context: Weak<RefCell<Context>>) -> ObjectBox<dyn Object> {
+        Rc::new(RefCell::new(ContextObject {
+            class,
+            super_object: Some(parent),
+            context,
+        })) as ObjectBox<dyn Object>
+    }
+}
+
+
+impl Object for ContextObject {
+    fn get_class(&self) -> Arc<Class> { 
+        self.class.clone()
+    }
+    fn get_super_object(&self) -> Option<ObjectBox<dyn Object>> {
+        self.super_object.clone()
+    }
+    fn get_field(&self, _index: usize) -> Option<ObjectBox<dyn Object>> {
+        panic!("Context does not have fields");
+    }
+    fn set_field(&mut self, _index: usize, _value: ObjectBox<dyn Object>) {
+        panic!("Context does not have fields");
+    }
+    fn size(&self) -> Option<usize> {
+        panic!("Context does not have a size");
+    }
+    fn duplicate(&self) -> ObjectBox<dyn Object> {
+        ContextObject::make_object(self.class.clone(), self.super_object.clone().unwrap(), self.context.clone())
     }
 }
 

@@ -9,7 +9,7 @@ use super::{Class, Object, ObjectBox};
 pub struct StringObject {
     class: Arc<Class>,
     super_object: Option<ObjectBox<dyn Object>>,
-    value: String,
+    pub value: String,
 }
 
 
