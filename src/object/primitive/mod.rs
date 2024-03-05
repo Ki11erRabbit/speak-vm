@@ -1,4 +1,4 @@
-use super::{Class, Method, ObjectBox};
+use super::{Class, Method, ObjectBox, VTable};
 use crate::object::Object;
 use super::Fault;
 use std::collections::HashMap;
@@ -16,42 +16,23 @@ pub mod character;
 #[derive(Clone)]
 pub struct PrimitiveObject<T: Copy + 'static> {
     class: Arc<Class>,
-    super_object: Option<ObjectBox<dyn Object>>,
+    super_object: Option<ObjectBox>,
+    vtable: VTable,
     pub data: T,
 }
 
 impl<T: Copy + 'static> PrimitiveObject<T> {
-    pub fn new(class: Arc<Class>, super_object: Option<ObjectBox<dyn Object>>, data: T) -> Self {
-        Self { class, super_object, data }
+    pub fn new(class: Arc<Class>, super_object: Option<ObjectBox>, data: T) -> Self {
+        Self { class, super_object, data, vtable: VTable::new(HashMap::new()) }
     }
 }
 
-impl<T: Copy> Object for PrimitiveObject<T> {
-    fn get_class(&self) -> Arc<Class> {
-        self.class.clone()
-    }
-    fn get_super_object(&self) -> Option<ObjectBox<dyn Object>> {
-        self.super_object.clone()
-    }
-    fn get_field(&self, _index: usize) -> Option<ObjectBox<dyn Object>> {
-        panic!("Primitive objects do not have fields")
-    }
-    fn set_field(&mut self, _index: usize, _value: ObjectBox<dyn Object>) {
-        panic!("Primitive objects do not have fields")
-    }
-    fn size(&self) -> Option<usize> {
-        None
-    }
-    fn duplicate(&self) -> ObjectBox<dyn Object> {
-        Rc::new(RefCell::new(PrimitiveObject::new(self.class.clone(), self.super_object.clone(), self.data)))
-    }
-}
 
 
 
 pub struct NumberObject {
     class: Arc<Class>,
-    super_object: Option<ObjectBox<dyn Object>>,
+    super_object: Option<ObjectBox>,
 }
 
 impl NumberObject {
@@ -69,8 +50,8 @@ impl NumberObject {
         Class::new(Some(parent), methods)
     }
     pub fn make_object(class: Arc<Class>,
-                           parent: ObjectBox<dyn Object>) -> ObjectBox<dyn Object> {
-        Rc::new(RefCell::new(NumberObject {class, super_object: Some(parent)})) as ObjectBox<dyn Object>
+                           parent: ObjectBox) -> ObjectBox {
+        Rc::new(RefCell::new(NumberObject {class, super_object: Some(parent)})) as ObjectBox
     }
 }
 
@@ -78,52 +59,55 @@ impl Object for NumberObject {
     fn get_class(&self) -> Arc<Class> {
         self.class.clone()
     }
-    fn get_super_object(&self) -> Option<ObjectBox<dyn Object>> {
+    fn get_super_object(&self) -> Option<ObjectBox> {
         self.super_object.clone()
     }
-    fn get_field(&self, _index: usize) -> Option<ObjectBox<dyn Object>> {
+    fn get_field(&self, _index: usize) -> Option<ObjectBox> {
         panic!("Number objects do not have fields")
     }
-    fn set_field(&mut self, _index: usize, _value: ObjectBox<dyn Object>) {
+    fn set_field(&mut self, _index: usize, _value: ObjectBox) {
         panic!("Number objects do not have fields")
     }
     fn size(&self) -> Option<usize> {
         None
     }
-    fn duplicate(&self) -> ObjectBox<dyn Object> {
+    fn duplicate(&self) -> ObjectBox {
         Rc::new(RefCell::new(NumberObject {class: self.class.clone(), super_object: self.super_object.clone()}))
+    }
+    fn initalize(&mut self, arguments: Vec<ObjectBox>, vtable: VTable) {
+        panic!("Number objects do not take arguments");
     }
 }
 
-fn number_add(_: ObjectBox<dyn Object>, _: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn number_add(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn number_subtract(_: ObjectBox<dyn Object>, _: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn number_subtract(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn number_multiply(_: ObjectBox<dyn Object>, _: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn number_multiply(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn number_divide(_: ObjectBox<dyn Object>, _: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn number_divide(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn number_modulo(_: ObjectBox<dyn Object>, _: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn number_modulo(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn number_abs(_: ObjectBox<dyn Object>, _: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn number_abs(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn number_pow(_: ObjectBox<dyn Object>, _: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn number_pow(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     Err(Fault::NotImplemented)
 }
 
-fn number_is_zero(_: ObjectBox<dyn Object>, _: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn number_is_zero(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     Err(Fault::NotImplemented)
 }
 
@@ -132,7 +116,7 @@ fn number_is_zero(_: ObjectBox<dyn Object>, _: &mut ContextData) -> Result<Optio
 macro_rules! create_type_ops {
     ($type:ty, $add_name:ident, $sub_name:ident, $mul_name:ident, $div_name:ident, $mod_name:ident) => {
 
-        fn $add_name(object: ObjectBox<dyn Object>, context: &mut crate::object::ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $add_name(object: ObjectBox, context: &mut crate::object::ContextData) -> Result<Option<ObjectBox>, Fault> {
             {
                 let mut object = object.borrow_mut();
                 let object = object.downcast_mut::<crate::object::primitive::PrimitiveObject<$type>>();
@@ -177,7 +161,7 @@ macro_rules! create_type_ops {
             Ok(None)
         }
 
-        fn $sub_name(object: ObjectBox<dyn Object>, context: &mut crate::object::ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $sub_name(object: ObjectBox, context: &mut crate::object::ContextData) -> Result<Option<ObjectBox>, Fault> {
             {
                 let mut object = object.borrow_mut();
                 let object = object.downcast_mut::<crate::object::primitive::PrimitiveObject<$type>>();
@@ -223,7 +207,7 @@ macro_rules! create_type_ops {
         }
         
 
-        fn $mul_name(object: ObjectBox<dyn Object>, context: &mut crate::object::ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $mul_name(object: ObjectBox, context: &mut crate::object::ContextData) -> Result<Option<ObjectBox>, Fault> {
             {
                 let mut object = object.borrow_mut();
                 let object = object.downcast_mut::<crate::object::primitive::PrimitiveObject<$type>>();
@@ -268,7 +252,7 @@ macro_rules! create_type_ops {
             Ok(None)
         }
 
-        fn $div_name(object: ObjectBox<dyn Object>, context: &mut crate::object::ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $div_name(object: ObjectBox, context: &mut crate::object::ContextData) -> Result<Option<ObjectBox>, Fault> {
             {
                 let mut object = object.borrow_mut();
                 let object = object.downcast_mut::<crate::object::primitive::PrimitiveObject<$type>>();
@@ -342,7 +326,7 @@ macro_rules! create_type_ops {
             Ok(None)
         }
 
-        fn $mod_name(object: ObjectBox<dyn Object>, context: &mut crate::object::ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+        fn $mod_name(object: ObjectBox, context: &mut crate::object::ContextData) -> Result<Option<ObjectBox>, Fault> {
             {
                 let mut object = object.borrow_mut();
                 let object = object.downcast_mut::<crate::object::primitive::PrimitiveObject<$type>>();

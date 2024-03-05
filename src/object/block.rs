@@ -8,7 +8,7 @@ use crate::object::Method;
 use std::sync::Arc;
 
 use crate::vm::bytecode::ByteCode;
-use super::ContextData;
+use super::{ContextData, VTable};
 
 
 
@@ -18,8 +18,9 @@ use super::ContextData;
 
 pub struct Block {
     class: Arc<Class>,
-    super_object: ObjectBox<dyn Object>,
+    super_object: ObjectBox,
     pub bytecode: Vec<ByteCode>,
+    vtable: VTable,
 }
 
 
@@ -30,9 +31,9 @@ impl Block {
         Class::new(Some(parent), methods)
     }
     pub fn make_object(class: Arc<Class>,
-                       parent: ObjectBox<dyn Object>,
-                       bytecode: Vec<ByteCode>) -> ObjectBox<dyn Object> {
-        Rc::new(RefCell::new(Block {class, super_object: parent, bytecode})) as ObjectBox<dyn Object>
+                       parent: ObjectBox,
+                       bytecode: Vec<ByteCode>) -> ObjectBox {
+        Rc::new(RefCell::new(Block {class, super_object: parent, bytecode, vtable: class.get_vtable()})) as ObjectBox
     }
 }
 
@@ -40,24 +41,27 @@ impl Object for Block {
     fn get_class(&self) -> Arc<Class> {
         self.class.clone()
     }
-    fn get_super_object(&self) -> Option<ObjectBox<dyn Object>> {
+    fn get_super_object(&self) -> Option<ObjectBox> {
         Some(self.super_object.clone())
     }
-    fn get_field(&self, _index: usize) -> Option<ObjectBox<dyn Object>> {
+    fn get_field(&self, _index: usize) -> Option<ObjectBox> {
         panic!("Block objects do not have fields")
     }
-    fn set_field(&mut self, _index: usize, _value: ObjectBox<dyn Object>) {
+    fn set_field(&mut self, _index: usize, _value: ObjectBox) {
         panic!("Block objects do not have fields")
     }
     fn size(&self) -> Option<usize> {
         None
     }
-    fn duplicate(&self) -> ObjectBox<dyn Object> {
+    fn duplicate(&self) -> ObjectBox {
         Block::make_object(self.class.clone(), self.super_object.clone(), self.bytecode.clone())
+    }
+    fn initalize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
+        self.vtable.extend(vtable);
     }
 }
 
-fn value(object: ObjectBox<dyn Object>, context: &mut ContextData) -> Result<Option<ObjectBox<dyn Object>>, Fault> {
+fn value(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let object = object.borrow();
     let object = object.downcast_ref::<Block>().expect("Expected block");
     for code in object.bytecode.iter() {

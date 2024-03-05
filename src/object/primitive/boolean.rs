@@ -21,7 +21,7 @@ impl BooleanObject {
         Class::new(Some(parent), methods)
     }
 
-    pub fn make_object(class: Arc<Class>, parent: ObjectBox<dyn Object>, data: bool) -> ObjectBox<dyn Object> {
+    pub fn make_object(class: Arc<Class>, parent: ObjectBox, data: bool) -> ObjectBox {
         Rc::new(RefCell::new(PrimitiveObject::new(class, Some(parent), data)))
     }
 }

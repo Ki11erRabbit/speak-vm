@@ -38,7 +38,7 @@ impl Interpreter {
         context.push(value);
     }
 
-    fn push_literal(context: &mut ContextData, literal: ObjectBox<dyn Object>) {
+    fn push_literal(context: &mut ContextData, literal: ObjectBox) {
         context.push(literal);
     }
 

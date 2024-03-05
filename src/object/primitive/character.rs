@@ -21,7 +21,7 @@ impl CharacterObject {
         let methods = HashMap::new();
         Class::new(Some(parent), methods)
     }
-    pub fn make_object(class: Arc<Class>, parent: ObjectBox<dyn Object>, value: char) -> ObjectBox<dyn Object> {
+    pub fn make_object(class: Arc<Class>, parent: ObjectBox, value: char) -> ObjectBox {
         Rc::new(RefCell::new(PrimitiveObject::new(class, Some(parent), value)))
     }
 }

@@ -51,7 +51,7 @@ pub enum ByteCode {
     NoOp,
     AccessField(usize),
     AccessTemp(usize),
-    PushLiteral(ObjectBox<dyn Object>),
+    PushLiteral(ObjectBox),
     AccessClass(String),
     StoreField(usize),
     StoreTemp(usize),
