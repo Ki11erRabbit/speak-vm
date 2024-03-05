@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use std::collections::HashMap;
-use crate::object::interpreter::Interpreter;
 use crate::object::ContextData;
 use crate::object::string::StringObject;
 use crate::object::Method;

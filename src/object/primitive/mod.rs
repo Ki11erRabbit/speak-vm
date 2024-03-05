@@ -5,7 +5,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::rc::Rc;
 use std::cell::RefCell;
-use crate::object::Interpreter;
 use super::ContextData;
 
 

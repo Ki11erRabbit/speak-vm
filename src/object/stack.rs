@@ -1,4 +1,3 @@
-use super::interpreter::Interpreter;
 use super::Class;
 use super::ContextData;
 use super::Object;

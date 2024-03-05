@@ -1,7 +1,5 @@
 pub mod primitive;
 pub mod stack;
-pub mod bytecode;
-pub mod interpreter;
 pub mod block;
 pub mod string;
 pub mod log;
@@ -15,7 +13,6 @@ use std::hash::Hash;
 use std::hash::Hasher;
 use std::sync::RwLock;
 
-use self::interpreter::Interpreter;
 use self::log::Logger;
 use self::primitive::boolean::BooleanObject;
 use self::primitive::character::CharacterObject;
@@ -698,6 +695,15 @@ impl ContextData {
         let stack = stack.data.last().unwrap().borrow();
         let stack = stack.downcast_ref::<stack::Stack>().unwrap();
         stack.data.last().map(|x| x.clone())
+    }
+    pub fn get_argument(&self, index: usize) -> Option<ObjectBox<dyn Object>> {
+        self.arguments.get(index).map(|x| x.clone())
+    }
+    pub fn set_argument(&mut self, index: usize, value: ObjectBox<dyn Object>) {
+        if index >= self.arguments.len() {
+            self.arguments.resize(index + 1, Nil::new());
+        }
+        self.arguments[index] = value;
     }
 }
 

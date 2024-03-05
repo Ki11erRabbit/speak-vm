@@ -3,8 +3,8 @@ pub mod vm;
 
 use object::{create_i64, create_string, init_stack, ContextData};
 
-use crate::object::bytecode::ByteCode;
-use crate::object::interpreter::Interpreter;
+use crate::vm::bytecode::ByteCode;
+use crate::vm::interpreter::Interpreter;
 
 fn main() {
     let mut context = ContextData::new(init_stack());

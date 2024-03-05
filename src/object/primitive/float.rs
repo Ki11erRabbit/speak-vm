@@ -1,4 +1,3 @@
-use crate::object::Interpreter;
 use super::{Class, Method, ObjectBox};
 use std::collections::HashMap;
 use std::{cell::RefCell, rc::Rc};

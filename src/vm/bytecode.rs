@@ -1,4 +1,4 @@
-use super::{ Object, ObjectBox};
+use crate::object::{Object, ObjectBox};
 
 /*pub struct ByteCodeObject {
     class: Class,

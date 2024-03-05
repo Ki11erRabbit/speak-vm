@@ -3,11 +3,11 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use crate::object::{Class, Object, ObjectBox};
 use crate::object::Fault;
-use crate::object::Interpreter;
+use crate::vm::interpreter::Interpreter;
 use crate::object::Method;
 use std::sync::Arc;
 
-use super::bytecode::ByteCode;
+use crate::vm::bytecode::ByteCode;
 use super::ContextData;
 
 

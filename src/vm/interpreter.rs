@@ -1,10 +1,6 @@
-use super::{create_message, create_stack, Context, ContextData, Message};
-use super::{Object, ObjectBox};
-use super::bytecode::{ByteCode, SpecialInstruction};
-use super::stack::Stack;
-use super::Method;
-use super::block::Block;
-
+use crate::object::{ContextData, ObjectBox, Object, Method};
+use crate::object::block::Block;
+use crate::vm::bytecode::{ByteCode, SpecialInstruction};
 
 
 pub struct Interpreter {
@@ -60,15 +56,14 @@ impl Interpreter {
     }
 
     fn send_msg(arg: usize, msg_index: String, context: &mut ContextData) {
-        let mut args = Vec::new();
-        for _ in 0..arg {
-            args.push(context.pop().expect("Expected argument"));
+        for i in 0..arg {
+            let value = context.pop().expect("Expected argument");
+            context.set_argument(i, value)
         }
-        context.arguments = args;
         let object = context.top().expect("Stack was empty").clone();
         let borrowed_object = object.borrow();
 
-        let message = create_message(&msg_index);
+        let message = crate::object::create_message(&msg_index);
 
         let method = borrowed_object.process_message(message);
         if let Some(method) = method {
@@ -98,15 +93,14 @@ impl Interpreter {
     }
 
     fn send_super_msg(arg: usize, msg_index: String, context: &mut ContextData) {
-        let mut args = Vec::new();
-        for _ in 0..arg {
-            args.push(context.pop().expect("Expected argument"));
+        for i in 0..arg {
+            let value = context.pop().expect("Expected argument");
+            context.set_argument(i, value)
         }
-        context.arguments = args;
         let object = context.top().expect("Stack was empty").clone();
         let borrowed_object = object.borrow();
 
-        let message = create_message(&msg_index);
+        let message = crate::object::create_message(&msg_index);
         
         let parent = borrowed_object.get_super_object().expect("Expected super object");
         let borrowed_parent = parent.borrow();
