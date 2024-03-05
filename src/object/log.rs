@@ -6,7 +6,10 @@ use crate::object::Method;
 use std::io::Write;
 use log::{info, warn, error, debug, trace};
 
-use super::{Class, Fault, Object, ObjectBox, ObjectStruct};
+use super::{Fault, Object, ObjectBox};
+use crate::object::VTable;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 
 
@@ -21,12 +24,21 @@ use super::{Class, Fault, Object, ObjectBox, ObjectStruct};
 
 
 
-
-pub struct Logger {}
+pub struct Logger {
+    super_object: Option<ObjectBox>,
+    vtable: VTable,
+}
 
 
 impl Logger {
-    pub fn make_class(parent: Arc<Class>) -> Class {
+    pub fn make_object(parent: ObjectBox) -> ObjectBox {
+        let logger = Logger {
+            super_object: Some(parent),
+            vtable: VTable::new_empty(),
+        };
+        Rc::new(RefCell::new(logger)) as ObjectBox
+    }
+    pub fn make_vtable() -> VTable {
         let mut methods = HashMap::new();
         methods.insert("println".to_string(), Arc::new(Method::RustMethod { fun: Box::new(log_println)}));
         methods.insert("print".to_string(), Arc::new(Method::RustMethod { fun: Box::new(log_print)}));
@@ -38,10 +50,37 @@ impl Logger {
         methods.insert("error".to_string(), Arc::new(Method::RustMethod { fun: Box::new(log_error)}));
         methods.insert("debug".to_string(), Arc::new(Method::RustMethod { fun: Box::new(log_debug)}));
 
-        Class::new(Some(parent), methods)
+        VTable::new(methods)
     }
-    pub fn make_object(class: Arc<Class>, parent: ObjectBox) -> ObjectBox {
-        ObjectStruct::new(class, Some(parent))
+}
+
+
+impl Object for Logger {
+    fn get_vtable(&self) -> &VTable {
+        &self.vtable
+    }
+    fn get_super_object(&self) -> Option<ObjectBox> {
+        self.super_object.clone()
+    }
+    fn get_field(&self, _index: usize) -> Option<ObjectBox> {
+        panic!("Integer objects do not have fields")
+    }
+    fn set_field(&mut self, _index: usize, _value: ObjectBox) {
+        panic!("Integer objects do not have fields")
+    }
+    fn size(&self) -> Option<usize> {
+        None
+    }
+    fn duplicate(&self) -> ObjectBox {
+        let logger = Logger::make_object(self.super_object.clone().unwrap().borrow().duplicate());
+        let mut log = logger.borrow_mut();
+        log.initialize(vec![], self.vtable.clone());
+        drop(log);
+        logger
+    }
+    fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
+        self.vtable.extend(Logger::make_vtable());
+        self.vtable.extend(vtable);
     }
 }
 

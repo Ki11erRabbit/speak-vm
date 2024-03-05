@@ -1,4 +1,4 @@
-use super::{Class, Method, ObjectBox};
+use super::{Method, ObjectBox};
 use std::collections::HashMap;
 use std::{cell::RefCell, rc::Rc};
 use crate::object::Object;
@@ -14,13 +14,16 @@ use crate::object::VTable;
 
 
 pub struct IntegerObject {
-    class: Arc<Class>,
     super_object: Option<ObjectBox>,
     vtable: VTable,
 }
 
 impl IntegerObject {
-    pub fn make_class(parent: Arc<Class>) -> Class {
+    pub fn make_object(parent: ObjectBox) -> ObjectBox {
+        let out = Rc::new(RefCell::new(IntegerObject{super_object: Some(parent), vtable: VTable::new_empty()}));
+        return out as ObjectBox;
+    }
+    pub fn make_vtable() -> VTable {
         let mut methods = HashMap::new();
         methods.insert(String::from("divides"), Arc::new(Method::RustMethod { fun: Box::new(integer_divides) }));
         methods.insert(String::from("shift_right"), Arc::new(Method::RustMethod { fun: Box::new(integer_shift_right) }));
@@ -28,20 +31,14 @@ impl IntegerObject {
         methods.insert(String::from("and"), Arc::new(Method::RustMethod { fun: Box::new(integer_bitwise_and) }));
         methods.insert(String::from("or"), Arc::new(Method::RustMethod { fun: Box::new(integer_bitwise_or) }));
         methods.insert(String::from("xor"), Arc::new(Method::RustMethod { fun: Box::new(integer_bitwise_xor) }));
-        
-        Class::new(Some(parent), methods)
-    }
-    pub fn make_object(class: Arc<Class>,
-                       parent: ObjectBox) -> ObjectBox {
-        let out = Rc::new(RefCell::new(IntegerObject{class, super_object: Some(parent), vtable: VTable::new_empty()}));
-        return out as ObjectBox;
+        VTable::new(methods)
     }
 }
 
 
 impl Object for IntegerObject {
-    fn get_class(&self) -> Arc<Class> {
-        self.class.clone()
+    fn get_vtable(&self) -> &VTable {
+        &self.vtable
     }
     fn get_super_object(&self) -> Option<ObjectBox> {
         self.super_object.clone()
@@ -56,9 +53,18 @@ impl Object for IntegerObject {
         None
     }
     fn duplicate(&self) -> ObjectBox {
-        IntegerObject::make_object(self.class.clone(), self.super_object.clone().unwrap())
+        let integer = IntegerObject::make_object(self.super_object.clone().unwrap().borrow().duplicate());
+        let mut int = integer.borrow_mut();
+        int.initialize(Vec::new(), self.vtable.clone());
+        drop(int);
+        integer
     }
     fn initialize(&mut self, arguments: Vec<ObjectBox>, vtable: crate::object::VTable) {
+        let integer_vtable = IntegerObject::make_vtable();
+        let integer = self.get_super_object().unwrap().clone();
+        let mut integer = integer.borrow_mut();
+        integer.initialize(arguments, integer_vtable);
+        self.vtable.extend(vtable);
         
     }
 }
@@ -285,24 +291,36 @@ pub struct I64Object {
 }
 
 impl I64Object {
-    pub fn make_class(parent: Arc<Class>) -> Class {
-        let mut methods = HashMap::new();
-        
-        Class::new(Some(parent), methods)
-    }
 
-    pub fn make_object(class: Arc<Class>,
-                           parent: ObjectBox,
-                           data: i64) -> ObjectBox {
-        let out = Rc::new(RefCell::new(PrimitiveObject::new(class, Some(parent), data)));
+    pub fn make_object(parent: ObjectBox, data: i64) -> ObjectBox {
+        let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
         return out as ObjectBox;
+    }
+    pub fn make_number_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(i64_add) }));
+        methods.insert(String::from("sub"), Arc::new(Method::RustMethod { fun: Box::new(i64_sub) }));
+        methods.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(i64_mul) }));
+        methods.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(i64_div) }));
+        methods.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(i64_mod) }));
+        VTable::new(methods)
+    }
+    pub fn make_integer_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("divides"), Arc::new(Method::RustMethod { fun: Box::new(i64_divides) }));
+        methods.insert(String::from("shift_right"), Arc::new(Method::RustMethod { fun: Box::new(i64_shr) }));
+        methods.insert(String::from("shift_left"), Arc::new(Method::RustMethod { fun: Box::new(i64_shl) }));
+        methods.insert(String::from("and"), Arc::new(Method::RustMethod { fun: Box::new(i64_and) }));
+        methods.insert(String::from("or"), Arc::new(Method::RustMethod { fun: Box::new(i64_or) }));
+        methods.insert(String::from("xor"), Arc::new(Method::RustMethod { fun: Box::new(i64_xor) }));
+        VTable::new(methods)
     }
 }
 
 
 impl Object for PrimitiveObject<i64> {
-    fn get_class(&self) -> Arc<Class> {
-        self.class.clone()
+    fn get_vtable(&self) -> &VTable {
+        &self.vtable
     }
     fn get_super_object(&self) -> Option<ObjectBox> {
         self.super_object.clone()
@@ -317,25 +335,15 @@ impl Object for PrimitiveObject<i64> {
         None
     }
     fn duplicate(&self) -> ObjectBox {
-        I64Object::make_object(self.class.clone(), self.super_object.clone().unwrap(), self.data)
+        let integer = I64Object::make_object(self.super_object.clone().unwrap().borrow().duplicate(), self.data);
+        let mut int = integer.borrow_mut();
+        int.initialize(Vec::new(), self.vtable.clone());
+        drop(int);
+        integer
     }
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
-        let mut number_vtable = HashMap::new();
-        number_vtable.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(i64_add) }));
-        number_vtable.insert(String::from("sub"), Arc::new(Method::RustMethod { fun: Box::new(i64_sub) }));
-        number_vtable.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(i64_mul) }));
-        number_vtable.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(i64_div) }));
-        number_vtable.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(i64_mod) }));
-        let number_vtable = VTable::new(number_vtable);
-
-        let mut integer_vtable = HashMap::new();
-        integer_vtable.insert(String::from("divides"), Arc::new(Method::RustMethod { fun: Box::new(i64_divides) }));
-        integer_vtable.insert(String::from("shift_right"), Arc::new(Method::RustMethod { fun: Box::new(i64_shr) }));
-        integer_vtable.insert(String::from("shift_left"), Arc::new(Method::RustMethod { fun: Box::new(i64_shl) }));
-        integer_vtable.insert(String::from("and"), Arc::new(Method::RustMethod { fun: Box::new(i64_and) }));
-        integer_vtable.insert(String::from("or"), Arc::new(Method::RustMethod { fun: Box::new(i64_or) }));
-        integer_vtable.insert(String::from("xor"), Arc::new(Method::RustMethod { fun: Box::new(i64_xor) }));
-        let integer_vtable = VTable::new(integer_vtable);
+        let number_vtable = I64Object::make_number_vtable();
+        let integer_vtable = I64Object::make_integer_vtable();
 
         let integer_object = self.get_super_object().unwrap().clone();
         let mut integer_object = integer_object.borrow_mut();
@@ -343,6 +351,7 @@ impl Object for PrimitiveObject<i64> {
         let number_object = integer_object.get_super_object().unwrap().clone();
         let mut number_object = number_object.borrow_mut();
         number_object.initialize(Vec::new(), number_vtable);
+        self.vtable.extend(vtable);
     }
 }
 
@@ -353,23 +362,35 @@ pub struct U64Object {
 }
 
 impl U64Object {
-    pub fn make_class(parent: Arc<Class>) -> Class {
-        let mut methods = HashMap::new();
-        
-        Class::new(Some(parent), methods)
-    }
-
-    pub fn make_object(class: Arc<Class>,
-                           parent: ObjectBox,
-                           data: u64) -> ObjectBox {
-        let out = Rc::new(RefCell::new(PrimitiveObject::new(class, Some(parent), data)));
+    pub fn make_object(parent: ObjectBox, data: u64) -> ObjectBox {
+        let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
         return out as ObjectBox;
+    }
+    pub fn make_number_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(u64_add) }));
+        methods.insert(String::from("sub"), Arc::new(Method::RustMethod { fun: Box::new(u64_sub) }));
+        methods.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(u64_mul) }));
+        methods.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(u64_div) }));
+        methods.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(u64_mod) }));
+        VTable::new(methods)
+    }
+    pub fn make_integer_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("divides"), Arc::new(Method::RustMethod { fun: Box::new(u64_divides) }));
+        methods.insert(String::from("shift_right"), Arc::new(Method::RustMethod { fun: Box::new(u64_shr) }));
+        methods.insert(String::from("shift_left"), Arc::new(Method::RustMethod { fun: Box::new(u64_shl) }));
+        methods.insert(String::from("and"), Arc::new(Method::RustMethod { fun: Box::new(u64_and) }));
+        methods.insert(String::from("or"), Arc::new(Method::RustMethod { fun: Box::new(u64_or) }));
+        methods.insert(String::from("xor"), Arc::new(Method::RustMethod { fun: Box::new(u64_xor) }));
+        VTable::new(methods)
     }
 }
 
+
 impl Object for PrimitiveObject<u64> {
-    fn get_class(&self) -> Arc<Class> {
-        self.class.clone()
+    fn get_vtable(&self) -> &VTable {
+        &self.vtable
     }
     fn get_super_object(&self) -> Option<ObjectBox> {
         self.super_object.clone()
@@ -384,25 +405,15 @@ impl Object for PrimitiveObject<u64> {
         None
     }
     fn duplicate(&self) -> ObjectBox {
-        U64Object::make_object(self.class.clone(), self.super_object.clone().unwrap(), self.data)
+        let integer = U64Object::make_object(self.super_object.clone().unwrap().borrow().duplicate(), self.data);
+        let mut int = integer.borrow_mut();
+        int.initialize(Vec::new(), self.vtable.clone());
+        drop(int);
+        integer
     }
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
-        let mut number_vtable = HashMap::new();
-        number_vtable.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(u64_add) }));
-        number_vtable.insert(String::from("sub"), Arc::new(Method::RustMethod { fun: Box::new(u64_sub) }));
-        number_vtable.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(u64_mul) }));
-        number_vtable.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(u64_div) }));
-        number_vtable.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(u64_mod) }));
-        let number_vtable = VTable::new(number_vtable);
-
-        let mut integer_vtable = HashMap::new();
-        integer_vtable.insert(String::from("divides"), Arc::new(Method::RustMethod { fun: Box::new(u64_divides) }));
-        integer_vtable.insert(String::from("shift_right"), Arc::new(Method::RustMethod { fun: Box::new(u64_shr) }));
-        integer_vtable.insert(String::from("shift_left"), Arc::new(Method::RustMethod { fun: Box::new(u64_shl) }));
-        integer_vtable.insert(String::from("and"), Arc::new(Method::RustMethod { fun: Box::new(u64_and) }));
-        integer_vtable.insert(String::from("or"), Arc::new(Method::RustMethod { fun: Box::new(u64_or) }));
-        integer_vtable.insert(String::from("xor"), Arc::new(Method::RustMethod { fun: Box::new(u64_xor) }));
-        let integer_vtable = VTable::new(integer_vtable);
+        let number_vtable = U64Object::make_number_vtable();
+        let integer_vtable = U64Object::make_integer_vtable();
 
         let integer_object = self.get_super_object().unwrap().clone();
         let mut integer_object = integer_object.borrow_mut();
@@ -410,6 +421,7 @@ impl Object for PrimitiveObject<u64> {
         let number_object = integer_object.get_super_object().unwrap().clone();
         let mut number_object = number_object.borrow_mut();
         number_object.initialize(Vec::new(), number_vtable);
+        self.vtable.extend(vtable);
     }
 }
 
@@ -420,24 +432,35 @@ pub struct I32Object {
 }
 
 impl I32Object {
-    pub fn make_class(parent: Arc<Class>) -> Class {
-        let mut methods = HashMap::new();
-
-        
-        Class::new(Some(parent), methods)
-    }
-
-    pub fn make_object(class: Arc<Class>,
-                           parent: ObjectBox,
-                           data: i32) -> ObjectBox {
-        let out = Rc::new(RefCell::new(PrimitiveObject::new(class, Some(parent), data)));
+    pub fn make_object(parent: ObjectBox, data: i32) -> ObjectBox {
+        let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
         return out as ObjectBox;
+    }
+    pub fn make_number_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(i32_add) }));
+        methods.insert(String::from("sub"), Arc::new(Method::RustMethod { fun: Box::new(i32_sub) }));
+        methods.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(i32_mul) }));
+        methods.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(i32_div) }));
+        methods.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(i32_mod) }));
+        VTable::new(methods)
+    }
+    pub fn make_integer_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("divides"), Arc::new(Method::RustMethod { fun: Box::new(i32_divides) }));
+        methods.insert(String::from("shift_right"), Arc::new(Method::RustMethod { fun: Box::new(i32_shr) }));
+        methods.insert(String::from("shift_left"), Arc::new(Method::RustMethod { fun: Box::new(i32_shl) }));
+        methods.insert(String::from("and"), Arc::new(Method::RustMethod { fun: Box::new(i32_and) }));
+        methods.insert(String::from("or"), Arc::new(Method::RustMethod { fun: Box::new(i32_or) }));
+        methods.insert(String::from("xor"), Arc::new(Method::RustMethod { fun: Box::new(i32_xor) }));
+        VTable::new(methods)
     }
 }
 
+
 impl Object for PrimitiveObject<i32> {
-    fn get_class(&self) -> Arc<Class> {
-        self.class.clone()
+    fn get_vtable(&self) -> &VTable {
+        &self.vtable
     }
     fn get_super_object(&self) -> Option<ObjectBox> {
         self.super_object.clone()
@@ -452,25 +475,15 @@ impl Object for PrimitiveObject<i32> {
         None
     }
     fn duplicate(&self) -> ObjectBox {
-        I32Object::make_object(self.class.clone(), self.super_object.clone().unwrap(), self.data)
+        let integer = I32Object::make_object(self.super_object.clone().unwrap().borrow().duplicate(), self.data);
+        let mut int = integer.borrow_mut();
+        int.initialize(Vec::new(), self.vtable.clone());
+        drop(int);
+        integer
     }
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
-        let mut number_vtable = HashMap::new();
-        number_vtable.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(i32_add) }));
-        number_vtable.insert(String::from("sub"), Arc::new(Method::RustMethod { fun: Box::new(i32_sub) }));
-        number_vtable.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(i32_mul) }));
-        number_vtable.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(i32_div) }));
-        number_vtable.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(i32_mod) }));
-        let number_vtable = VTable::new(number_vtable);
-
-        let mut integer_vtable = HashMap::new();
-        integer_vtable.insert(String::from("divides"), Arc::new(Method::RustMethod { fun: Box::new(i32_divides) }));
-        integer_vtable.insert(String::from("shift_right"), Arc::new(Method::RustMethod { fun: Box::new(i32_shr) }));
-        integer_vtable.insert(String::from("shift_left"), Arc::new(Method::RustMethod { fun: Box::new(i32_shl) }));
-        integer_vtable.insert(String::from("and"), Arc::new(Method::RustMethod { fun: Box::new(i32_and) }));
-        integer_vtable.insert(String::from("or"), Arc::new(Method::RustMethod { fun: Box::new(i32_or) }));
-        integer_vtable.insert(String::from("xor"), Arc::new(Method::RustMethod { fun: Box::new(i32_xor) }));
-        let integer_vtable = VTable::new(integer_vtable);
+        let number_vtable = I32Object::make_number_vtable();
+        let integer_vtable = I32Object::make_integer_vtable();
 
         let integer_object = self.get_super_object().unwrap().clone();
         let mut integer_object = integer_object.borrow_mut();
@@ -478,6 +491,7 @@ impl Object for PrimitiveObject<i32> {
         let number_object = integer_object.get_super_object().unwrap().clone();
         let mut number_object = number_object.borrow_mut();
         number_object.initialize(Vec::new(), number_vtable);
+        self.vtable.extend(vtable);
     }
 }
 
@@ -488,25 +502,35 @@ pub struct U32Object {
 }
 
 impl U32Object {
-    pub fn make_class(parent: Arc<Class>) -> Class {
-        let mut methods = HashMap::new();
-
-        
-        Class::new(Some(parent), methods)
-    }
-
-    pub fn make_object(class: Arc<Class>,
-                           parent: ObjectBox,
-                           data: u32) -> ObjectBox {
-        let out = Rc::new(RefCell::new(PrimitiveObject::new(class, Some(parent), data)));
+    pub fn make_object(parent: ObjectBox, data: u32) -> ObjectBox {
+        let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
         return out as ObjectBox;
+    }
+    pub fn make_number_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(u32_add) }));
+        methods.insert(String::from("sub"), Arc::new(Method::RustMethod { fun: Box::new(u32_sub) }));
+        methods.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(u32_mul) }));
+        methods.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(u32_div) }));
+        methods.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(u32_mod) }));
+        VTable::new(methods)
+    }
+    pub fn make_integer_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("divides"), Arc::new(Method::RustMethod { fun: Box::new(u32_divides) }));
+        methods.insert(String::from("shift_right"), Arc::new(Method::RustMethod { fun: Box::new(u32_shr) }));
+        methods.insert(String::from("shift_left"), Arc::new(Method::RustMethod { fun: Box::new(u32_shl) }));
+        methods.insert(String::from("and"), Arc::new(Method::RustMethod { fun: Box::new(u32_and) }));
+        methods.insert(String::from("or"), Arc::new(Method::RustMethod { fun: Box::new(u32_or) }));
+        methods.insert(String::from("xor"), Arc::new(Method::RustMethod { fun: Box::new(u32_xor) }));
+        VTable::new(methods)
     }
 }
 
 
 impl Object for PrimitiveObject<u32> {
-    fn get_class(&self) -> Arc<Class> {
-        self.class.clone()
+    fn get_vtable(&self) -> &VTable {
+        &self.vtable
     }
     fn get_super_object(&self) -> Option<ObjectBox> {
         self.super_object.clone()
@@ -521,25 +545,15 @@ impl Object for PrimitiveObject<u32> {
         None
     }
     fn duplicate(&self) -> ObjectBox {
-        U32Object::make_object(self.class.clone(), self.super_object.clone().unwrap(), self.data)
+        let integer = U32Object::make_object(self.super_object.clone().unwrap().borrow().duplicate(), self.data);
+        let mut int = integer.borrow_mut();
+        int.initialize(Vec::new(), self.vtable.clone());
+        drop(int);
+        integer
     }
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
-        let mut number_vtable = HashMap::new();
-        number_vtable.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(u32_add) }));
-        number_vtable.insert(String::from("sub"), Arc::new(Method::RustMethod { fun: Box::new(u32_sub) }));
-        number_vtable.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(u32_mul) }));
-        number_vtable.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(u32_div) }));
-        number_vtable.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(u32_mod) }));
-        let number_vtable = VTable::new(number_vtable);
-
-        let mut integer_vtable = HashMap::new();
-        integer_vtable.insert(String::from("divides"), Arc::new(Method::RustMethod { fun: Box::new(u32_divides) }));
-        integer_vtable.insert(String::from("shift_right"), Arc::new(Method::RustMethod { fun: Box::new(u32_shr) }));
-        integer_vtable.insert(String::from("shift_left"), Arc::new(Method::RustMethod { fun: Box::new(u32_shl) }));
-        integer_vtable.insert(String::from("and"), Arc::new(Method::RustMethod { fun: Box::new(u32_and) }));
-        integer_vtable.insert(String::from("or"), Arc::new(Method::RustMethod { fun: Box::new(u32_or) }));
-        integer_vtable.insert(String::from("xor"), Arc::new(Method::RustMethod { fun: Box::new(u32_xor) }));
-        let integer_vtable = VTable::new(integer_vtable);
+        let number_vtable = U32Object::make_number_vtable();
+        let integer_vtable = U32Object::make_integer_vtable();
 
         let integer_object = self.get_super_object().unwrap().clone();
         let mut integer_object = integer_object.borrow_mut();
@@ -547,6 +561,7 @@ impl Object for PrimitiveObject<u32> {
         let number_object = integer_object.get_super_object().unwrap().clone();
         let mut number_object = number_object.borrow_mut();
         number_object.initialize(Vec::new(), number_vtable);
+        self.vtable.extend(vtable);
     }
 }
 
@@ -557,23 +572,35 @@ pub struct I16Object {
 }
 
 impl I16Object {
-    pub fn make_class(parent: Arc<Class>) -> Class {
-        let mut methods = HashMap::new();
-        
-        Class::new(Some(parent), methods)
-    }
-
-    pub fn make_object(class: Arc<Class>,
-                           parent: ObjectBox,
-                           data: i16) -> ObjectBox {
-        let out = Rc::new(RefCell::new(PrimitiveObject::new(class, Some(parent), data)));
+    pub fn make_object(parent: ObjectBox, data: i16) -> ObjectBox {
+        let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
         return out as ObjectBox;
+    }
+    pub fn make_number_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(i16_add) }));
+        methods.insert(String::from("sub"), Arc::new(Method::RustMethod { fun: Box::new(i16_sub) }));
+        methods.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(i16_mul) }));
+        methods.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(i16_div) }));
+        methods.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(i16_mod) }));
+        VTable::new(methods)
+    }
+    pub fn make_integer_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("divides"), Arc::new(Method::RustMethod { fun: Box::new(i16_divides) }));
+        methods.insert(String::from("shift_right"), Arc::new(Method::RustMethod { fun: Box::new(i16_shr) }));
+        methods.insert(String::from("shift_left"), Arc::new(Method::RustMethod { fun: Box::new(i16_shl) }));
+        methods.insert(String::from("and"), Arc::new(Method::RustMethod { fun: Box::new(i16_and) }));
+        methods.insert(String::from("or"), Arc::new(Method::RustMethod { fun: Box::new(i16_or) }));
+        methods.insert(String::from("xor"), Arc::new(Method::RustMethod { fun: Box::new(i16_xor) }));
+        VTable::new(methods)
     }
 }
 
+
 impl Object for PrimitiveObject<i16> {
-    fn get_class(&self) -> Arc<Class> {
-        self.class.clone()
+    fn get_vtable(&self) -> &VTable {
+        &self.vtable
     }
     fn get_super_object(&self) -> Option<ObjectBox> {
         self.super_object.clone()
@@ -588,25 +615,15 @@ impl Object for PrimitiveObject<i16> {
         None
     }
     fn duplicate(&self) -> ObjectBox {
-        I16Object::make_object(self.class.clone(), self.super_object.clone().unwrap(), self.data)
+        let integer = I16Object::make_object(self.super_object.clone().unwrap().borrow().duplicate(), self.data);
+        let mut int = integer.borrow_mut();
+        int.initialize(Vec::new(), self.vtable.clone());
+        drop(int);
+        integer
     }
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
-        let mut number_vtable = HashMap::new();
-        number_vtable.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(i16_add) }));
-        number_vtable.insert(String::from("sub"), Arc::new(Method::RustMethod { fun: Box::new(i16_sub) }));
-        number_vtable.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(i16_mul) }));
-        number_vtable.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(i16_div) }));
-        number_vtable.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(i16_mod) }));
-        let number_vtable = VTable::new(number_vtable);
-
-        let mut integer_vtable = HashMap::new();
-        integer_vtable.insert(String::from("divides"), Arc::new(Method::RustMethod { fun: Box::new(i16_divides) }));
-        integer_vtable.insert(String::from("shift_right"), Arc::new(Method::RustMethod { fun: Box::new(i16_shr) }));
-        integer_vtable.insert(String::from("shift_left"), Arc::new(Method::RustMethod { fun: Box::new(i16_shl) }));
-        integer_vtable.insert(String::from("and"), Arc::new(Method::RustMethod { fun: Box::new(i16_and) }));
-        integer_vtable.insert(String::from("or"), Arc::new(Method::RustMethod { fun: Box::new(i16_or) }));
-        integer_vtable.insert(String::from("xor"), Arc::new(Method::RustMethod { fun: Box::new(i16_xor) }));
-        let integer_vtable = VTable::new(integer_vtable);
+        let number_vtable = I16Object::make_number_vtable();
+        let integer_vtable = I16Object::make_integer_vtable();
 
         let integer_object = self.get_super_object().unwrap().clone();
         let mut integer_object = integer_object.borrow_mut();
@@ -614,6 +631,7 @@ impl Object for PrimitiveObject<i16> {
         let number_object = integer_object.get_super_object().unwrap().clone();
         let mut number_object = number_object.borrow_mut();
         number_object.initialize(Vec::new(), number_vtable);
+        self.vtable.extend(vtable);
     }
 }
 
@@ -625,24 +643,35 @@ pub struct U16Object {
 }
 
 impl U16Object {
-    pub fn make_class(parent: Arc<Class>) -> Class {
-        let mut methods = HashMap::new();
-
-        
-        Class::new(Some(parent), methods)
-    }
-
-    pub fn make_object(class: Arc<Class>,
-                           parent: ObjectBox,
-                           data: u16) -> ObjectBox {
-        let out = Rc::new(RefCell::new(PrimitiveObject::new(class, Some(parent), data)));
+    pub fn make_object(parent: ObjectBox, data: u16) -> ObjectBox {
+        let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
         return out as ObjectBox;
+    }
+    pub fn make_number_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(u16_add) }));
+        methods.insert(String::from("sub"), Arc::new(Method::RustMethod { fun: Box::new(u16_sub) }));
+        methods.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(u16_mul) }));
+        methods.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(u16_div) }));
+        methods.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(u16_mod) }));
+        VTable::new(methods)
+    }
+    pub fn make_integer_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("divides"), Arc::new(Method::RustMethod { fun: Box::new(u16_divides) }));
+        methods.insert(String::from("shift_right"), Arc::new(Method::RustMethod { fun: Box::new(u16_shr) }));
+        methods.insert(String::from("shift_left"), Arc::new(Method::RustMethod { fun: Box::new(u16_shl) }));
+        methods.insert(String::from("and"), Arc::new(Method::RustMethod { fun: Box::new(u16_and) }));
+        methods.insert(String::from("or"), Arc::new(Method::RustMethod { fun: Box::new(u16_or) }));
+        methods.insert(String::from("xor"), Arc::new(Method::RustMethod { fun: Box::new(u16_xor) }));
+        VTable::new(methods)
     }
 }
 
+
 impl Object for PrimitiveObject<u16> {
-    fn get_class(&self) -> Arc<Class> {
-        self.class.clone()
+    fn get_vtable(&self) -> &VTable {
+        &self.vtable
     }
     fn get_super_object(&self) -> Option<ObjectBox> {
         self.super_object.clone()
@@ -657,25 +686,15 @@ impl Object for PrimitiveObject<u16> {
         None
     }
     fn duplicate(&self) -> ObjectBox {
-        U16Object::make_object(self.class.clone(), self.super_object.clone().unwrap(), self.data)
+        let integer = U16Object::make_object(self.super_object.clone().unwrap().borrow().duplicate(), self.data);
+        let mut int = integer.borrow_mut();
+        int.initialize(Vec::new(), self.vtable.clone());
+        drop(int);
+        integer
     }
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
-        let mut number_vtable = HashMap::new();
-        number_vtable.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(u16_add) }));
-        number_vtable.insert(String::from("sub"), Arc::new(Method::RustMethod { fun: Box::new(u16_sub) }));
-        number_vtable.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(u16_mul) }));
-        number_vtable.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(u16_div) }));
-        number_vtable.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(u16_mod) }));
-        let number_vtable = VTable::new(number_vtable);
-
-        let mut integer_vtable = HashMap::new();
-        integer_vtable.insert(String::from("divides"), Arc::new(Method::RustMethod { fun: Box::new(u16_divides) }));
-        integer_vtable.insert(String::from("shift_right"), Arc::new(Method::RustMethod { fun: Box::new(u16_shr) }));
-        integer_vtable.insert(String::from("shift_left"), Arc::new(Method::RustMethod { fun: Box::new(u16_shl) }));
-        integer_vtable.insert(String::from("and"), Arc::new(Method::RustMethod { fun: Box::new(u16_and) }));
-        integer_vtable.insert(String::from("or"), Arc::new(Method::RustMethod { fun: Box::new(u16_or) }));
-        integer_vtable.insert(String::from("xor"), Arc::new(Method::RustMethod { fun: Box::new(u16_xor) }));
-        let integer_vtable = VTable::new(integer_vtable);
+        let number_vtable = U16Object::make_number_vtable();
+        let integer_vtable = U16Object::make_integer_vtable();
 
         let integer_object = self.get_super_object().unwrap().clone();
         let mut integer_object = integer_object.borrow_mut();
@@ -683,6 +702,7 @@ impl Object for PrimitiveObject<u16> {
         let number_object = integer_object.get_super_object().unwrap().clone();
         let mut number_object = number_object.borrow_mut();
         number_object.initialize(Vec::new(), number_vtable);
+        self.vtable.extend(vtable);
     }
 }
 
@@ -693,24 +713,35 @@ pub struct I8Object {
 }
 
 impl I8Object {
-    pub fn make_class(parent: Arc<Class>) -> Class {
-        let mut methods = HashMap::new();
-
-        
-        Class::new(Some(parent), methods)
-    }
-
-    pub fn make_object(class: Arc<Class>,
-                           parent: ObjectBox,
-                           data: i8) -> ObjectBox {
-        let out = Rc::new(RefCell::new(PrimitiveObject::new(class, Some(parent), data)));
+    pub fn make_object(parent: ObjectBox, data: i8) -> ObjectBox {
+        let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
         return out as ObjectBox;
+    }
+    pub fn make_number_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(i8_add) }));
+        methods.insert(String::from("sub"), Arc::new(Method::RustMethod { fun: Box::new(i8_sub) }));
+        methods.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(i8_mul) }));
+        methods.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(i8_div) }));
+        methods.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(i8_mod) }));
+        VTable::new(methods)
+    }
+    pub fn make_integer_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("divides"), Arc::new(Method::RustMethod { fun: Box::new(i8_divides) }));
+        methods.insert(String::from("shift_right"), Arc::new(Method::RustMethod { fun: Box::new(i8_shr) }));
+        methods.insert(String::from("shift_left"), Arc::new(Method::RustMethod { fun: Box::new(i8_shl) }));
+        methods.insert(String::from("and"), Arc::new(Method::RustMethod { fun: Box::new(i8_and) }));
+        methods.insert(String::from("or"), Arc::new(Method::RustMethod { fun: Box::new(i8_or) }));
+        methods.insert(String::from("xor"), Arc::new(Method::RustMethod { fun: Box::new(i8_xor) }));
+        VTable::new(methods)
     }
 }
 
+
 impl Object for PrimitiveObject<i8> {
-    fn get_class(&self) -> Arc<Class> {
-        self.class.clone()
+    fn get_vtable(&self) -> &VTable {
+        &self.vtable
     }
     fn get_super_object(&self) -> Option<ObjectBox> {
         self.super_object.clone()
@@ -725,25 +756,15 @@ impl Object for PrimitiveObject<i8> {
         None
     }
     fn duplicate(&self) -> ObjectBox {
-        I8Object::make_object(self.class.clone(), self.super_object.clone().unwrap(), self.data)
+        let integer = I8Object::make_object(self.super_object.clone().unwrap().borrow().duplicate(), self.data);
+        let mut int = integer.borrow_mut();
+        int.initialize(Vec::new(), self.vtable.clone());
+        drop(int);
+        integer
     }
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
-        let mut number_vtable = HashMap::new();
-        number_vtable.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(i8_add) }));
-        number_vtable.insert(String::from("sub"), Arc::new(Method::RustMethod { fun: Box::new(i8_sub) }));
-        number_vtable.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(i8_mul) }));
-        number_vtable.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(i8_div) }));
-        number_vtable.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(i8_mod) }));
-        let number_vtable = VTable::new(number_vtable);
-
-        let mut integer_vtable = HashMap::new();
-        integer_vtable.insert(String::from("divides"), Arc::new(Method::RustMethod { fun: Box::new(i8_divides) }));
-        integer_vtable.insert(String::from("shift_right"), Arc::new(Method::RustMethod { fun: Box::new(i8_shr) }));
-        integer_vtable.insert(String::from("shift_left"), Arc::new(Method::RustMethod { fun: Box::new(i8_shl) }));
-        integer_vtable.insert(String::from("and"), Arc::new(Method::RustMethod { fun: Box::new(i8_and) }));
-        integer_vtable.insert(String::from("or"), Arc::new(Method::RustMethod { fun: Box::new(i8_or) }));
-        integer_vtable.insert(String::from("xor"), Arc::new(Method::RustMethod { fun: Box::new(i8_xor) }));
-        let integer_vtable = VTable::new(integer_vtable);
+        let number_vtable = I8Object::make_number_vtable();
+        let integer_vtable = I8Object::make_integer_vtable();
 
         let integer_object = self.get_super_object().unwrap().clone();
         let mut integer_object = integer_object.borrow_mut();
@@ -751,6 +772,7 @@ impl Object for PrimitiveObject<i8> {
         let number_object = integer_object.get_super_object().unwrap().clone();
         let mut number_object = number_object.borrow_mut();
         number_object.initialize(Vec::new(), number_vtable);
+        self.vtable.extend(vtable);
     }
 }
 
@@ -761,24 +783,35 @@ pub struct U8Object {
 }
 
 impl U8Object {
-    pub fn make_class(parent: Arc<Class>) -> Class {
-        let mut methods = HashMap::new();
-
-        
-        Class::new(Some(parent), methods)
-    }
-
-    pub fn make_object(class: Arc<Class>,
-                           parent: ObjectBox,
-                           data: u8) -> ObjectBox {
-        let out = Rc::new(RefCell::new(PrimitiveObject::new(class, Some(parent), data)));
+    pub fn make_object(parent: ObjectBox, data: u8) -> ObjectBox {
+        let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
         return out as ObjectBox;
+    }
+    pub fn make_number_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(u8_add) }));
+        methods.insert(String::from("sub"), Arc::new(Method::RustMethod { fun: Box::new(u8_sub) }));
+        methods.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(u8_mul) }));
+        methods.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(u8_div) }));
+        methods.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(u8_mod) }));
+        VTable::new(methods)
+    }
+    pub fn make_integer_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("divides"), Arc::new(Method::RustMethod { fun: Box::new(u8_divides) }));
+        methods.insert(String::from("shift_right"), Arc::new(Method::RustMethod { fun: Box::new(u8_shr) }));
+        methods.insert(String::from("shift_left"), Arc::new(Method::RustMethod { fun: Box::new(u8_shl) }));
+        methods.insert(String::from("and"), Arc::new(Method::RustMethod { fun: Box::new(u8_and) }));
+        methods.insert(String::from("or"), Arc::new(Method::RustMethod { fun: Box::new(u8_or) }));
+        methods.insert(String::from("xor"), Arc::new(Method::RustMethod { fun: Box::new(u8_xor) }));
+        VTable::new(methods)
     }
 }
 
+
 impl Object for PrimitiveObject<u8> {
-    fn get_class(&self) -> Arc<Class> {
-        self.class.clone()
+    fn get_vtable(&self) -> &VTable {
+        &self.vtable
     }
     fn get_super_object(&self) -> Option<ObjectBox> {
         self.super_object.clone()
@@ -793,25 +826,15 @@ impl Object for PrimitiveObject<u8> {
         None
     }
     fn duplicate(&self) -> ObjectBox {
-        U8Object::make_object(self.class.clone(), self.super_object.clone().unwrap(), self.data)
+        let integer = U8Object::make_object(self.super_object.clone().unwrap().borrow().duplicate(), self.data);
+        let mut int = integer.borrow_mut();
+        int.initialize(Vec::new(), self.vtable.clone());
+        drop(int);
+        integer
     }
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
-        let mut number_vtable = HashMap::new();
-        number_vtable.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(u8_add) }));
-        number_vtable.insert(String::from("sub"), Arc::new(Method::RustMethod { fun: Box::new(u8_sub) }));
-        number_vtable.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(u8_mul) }));
-        number_vtable.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(u8_div) }));
-        number_vtable.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(u8_mod) }));
-        let number_vtable = VTable::new(number_vtable);
-
-        let mut integer_vtable = HashMap::new();
-        integer_vtable.insert(String::from("divides"), Arc::new(Method::RustMethod { fun: Box::new(u8_divides) }));
-        integer_vtable.insert(String::from("shift_right"), Arc::new(Method::RustMethod { fun: Box::new(u8_shr) }));
-        integer_vtable.insert(String::from("shift_left"), Arc::new(Method::RustMethod { fun: Box::new(u8_shl) }));
-        integer_vtable.insert(String::from("and"), Arc::new(Method::RustMethod { fun: Box::new(u8_and) }));
-        integer_vtable.insert(String::from("or"), Arc::new(Method::RustMethod { fun: Box::new(u8_or) }));
-        integer_vtable.insert(String::from("xor"), Arc::new(Method::RustMethod { fun: Box::new(u8_xor) }));
-        let integer_vtable = VTable::new(integer_vtable);
+        let number_vtable = U8Object::make_number_vtable();
+        let integer_vtable = U8Object::make_integer_vtable();
 
         let integer_object = self.get_super_object().unwrap().clone();
         let mut integer_object = integer_object.borrow_mut();
@@ -819,6 +842,7 @@ impl Object for PrimitiveObject<u8> {
         let number_object = integer_object.get_super_object().unwrap().clone();
         let mut number_object = number_object.borrow_mut();
         number_object.initialize(Vec::new(), number_vtable);
+        self.vtable.extend(vtable);
     }
 }
 

@@ -1,4 +1,3 @@
-use super::Class;
 use super::ContextData;
 use super::Object;
 use super::ObjectBox;
@@ -13,30 +12,26 @@ use super::Fault;
 
 
 pub struct Stack {
-    class: Arc<Class>,
     super_object: Option<ObjectBox>,
     vtable: VTable,
     pub data: Vec<ObjectBox>,
 }
 
 impl Stack {
-    pub fn make_class(parent: Arc<Class>) -> Class {
+    pub fn make_vtable() -> VTable {
         let mut methods = HashMap::new();
         methods.insert(String::from("push"), Arc::new(Method::RustMethod { fun: Box::new(stack_push) }));
         methods.insert(String::from("pop"), Arc::new(Method::RustMethod { fun: Box::new(stack_pop) }));
-
-        Class::new(Some(parent), methods)
+        VTable::new(methods)
     }
 
-    pub fn make_object(class: Arc<Class>,
-                           parent: ObjectBox) -> ObjectBox {
-        Rc::new(RefCell::new(Stack {class, super_object: Some(parent), data: Vec::new(), vtable: class.get_vtable()})) as ObjectBox
+    pub fn make_object(parent: ObjectBox) -> ObjectBox {
+        Rc::new(RefCell::new(Stack {super_object: Some(parent), data: Vec::new(), vtable: VTable::new_empty()})) as ObjectBox
     }
 
-    pub fn make_object_with_stack(class: Arc<Class>,
-                           parent: ObjectBox,
-                           data: Vec<ObjectBox>) -> ObjectBox {
-        Rc::new(RefCell::new(Stack {class, super_object: Some(parent), data, vtable: class.get_vtable()})) as ObjectBox
+    pub fn make_object_with_stack(parent: ObjectBox,
+                                  data: Vec<ObjectBox>) -> ObjectBox {
+        Rc::new(RefCell::new(Stack {super_object: Some(parent), data, vtable: VTable::new_empty()})) as ObjectBox
     }
     
     pub fn push(&mut self, value: ObjectBox) {
@@ -57,8 +52,8 @@ impl Stack {
 }
 
 impl Object for Stack {
-    fn get_class(&self) -> Arc<Class> {
-        self.class.clone()
+    fn get_vtable(&self) -> &VTable {
+        &self.vtable
     }
     fn get_super_object(&self) -> Option<ObjectBox> {
         self.super_object.clone()
@@ -77,12 +72,17 @@ impl Object for Stack {
         Some(self.data.len())
     }
     fn duplicate(&self) -> ObjectBox {
-        Stack::make_object_with_stack(self.class.clone(), self.super_object.clone().unwrap(), self.data.clone())
+        let stack = Stack::make_object_with_stack(self.super_object.clone().unwrap().borrow().duplicate(), self.data.clone());
+        let mut stk = stack.borrow_mut();
+        stk.initialize(Vec::new(), self.vtable.clone());
+        drop(stk);
+        stack
     }
-    fn initalize(&mut self, arguments: Vec<ObjectBox>, vtable: VTable) {
+    fn initialize(&mut self, arguments: Vec<ObjectBox>, vtable: VTable) {
         for arg in arguments {
             self.push(arg);
         }
+        self.vtable.extend(Stack::make_vtable());
         self.vtable.extend(vtable);
     }
 }

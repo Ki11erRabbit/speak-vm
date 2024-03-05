@@ -1,4 +1,4 @@
-use super::{Class, Method, ObjectBox, VTable};
+use super::{Method, ObjectBox, VTable};
 use crate::object::Object;
 use super::Fault;
 use std::collections::HashMap;
@@ -15,15 +15,14 @@ pub mod character;
 
 #[derive(Clone)]
 pub struct PrimitiveObject<T: Copy + 'static> {
-    class: Arc<Class>,
     super_object: Option<ObjectBox>,
     vtable: VTable,
     pub data: T,
 }
 
 impl<T: Copy + 'static> PrimitiveObject<T> {
-    pub fn new(class: Arc<Class>, super_object: Option<ObjectBox>, data: T) -> Self {
-        Self { class, super_object, data, vtable: VTable::new(HashMap::new()) }
+    pub fn new(super_object: Option<ObjectBox>, data: T) -> Self {
+        Self { super_object, data, vtable: VTable::new_empty() }
     }
 }
 
@@ -31,12 +30,15 @@ impl<T: Copy + 'static> PrimitiveObject<T> {
 
 
 pub struct NumberObject {
-    class: Arc<Class>,
     super_object: Option<ObjectBox>,
+    vtable: VTable,
 }
 
 impl NumberObject {
-    pub fn make_class(parent: Arc<Class>) -> Class {
+    pub fn make_object(parent: ObjectBox) -> ObjectBox {
+        Rc::new(RefCell::new(NumberObject {super_object: Some(parent), vtable: VTable::new_empty()})) as ObjectBox
+    }
+    pub fn make_vtable() -> VTable {
         let mut methods = HashMap::new();
         methods.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(number_add) }));
         methods.insert(String::from("sub"), Arc::new(Method::RustMethod { fun: Box::new(number_subtract) }));
@@ -47,20 +49,16 @@ impl NumberObject {
         methods.insert(String::from("pow"), Arc::new(Method::RustMethod { fun: Box::new(number_pow) }));
         methods.insert(String::from("is_zero"), Arc::new(Method::RustMethod { fun: Box::new(number_is_zero) }));
         
-        Class::new(Some(parent), methods)
-    }
-    pub fn make_object(class: Arc<Class>,
-                           parent: ObjectBox) -> ObjectBox {
-        Rc::new(RefCell::new(NumberObject {class, super_object: Some(parent)})) as ObjectBox
+        VTable::new(methods)
     }
 }
 
 impl Object for NumberObject {
-    fn get_class(&self) -> Arc<Class> {
-        self.class.clone()
-    }
     fn get_super_object(&self) -> Option<ObjectBox> {
         self.super_object.clone()
+    }
+    fn get_vtable(&self) -> &VTable {
+        &self.vtable
     }
     fn get_field(&self, _index: usize) -> Option<ObjectBox> {
         panic!("Number objects do not have fields")
@@ -72,10 +70,12 @@ impl Object for NumberObject {
         None
     }
     fn duplicate(&self) -> ObjectBox {
-        Rc::new(RefCell::new(NumberObject {class: self.class.clone(), super_object: self.super_object.clone()}))
+        let number = NumberObject {super_object: Some(self.super_object.clone().unwrap().borrow().duplicate()), vtable: self.vtable.clone()};
+        Rc::new(RefCell::new(number))
     }
-    fn initalize(&mut self, arguments: Vec<ObjectBox>, vtable: VTable) {
-        panic!("Number objects do not take arguments");
+    fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
+        self.vtable.extend(NumberObject::make_vtable());
+        self.vtable.extend(vtable);
     }
 }
 

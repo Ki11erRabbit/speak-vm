@@ -1,38 +1,39 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use super::{Class, Object, ObjectBox};
+use super::{Object, ObjectBox, VTable};
 
 
 
 
 
 pub struct StringObject {
-    class: Arc<Class>,
     super_object: Option<ObjectBox>,
+    vtable: VTable,
     pub value: String,
 }
 
 
 
 impl StringObject {
-    pub fn make_class(parent: Arc<Class>) -> Class {
-        let methods = HashMap::new();
-        Class::new(Some(parent), methods)
-    }
-    pub fn make_object(class: Arc<Class>, parent: ObjectBox, value: String) -> ObjectBox {
+    pub fn make_object(parent: ObjectBox, value: String) -> ObjectBox {
         let string = StringObject {
-            class,
             super_object: Some(parent),
             value,
+            vtable: VTable::new_empty(),
         };
         Rc::new(RefCell::new(string)) as ObjectBox
+    }
+    pub fn make_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        //methods.insert(String::from("length"), Arc::new(Method::RustMethod { fun: Box::new(string_length) }));
+        VTable::new(methods)
     }
 }
 
 
 impl Object for StringObject {
-    fn get_class(&self) -> Arc<Class> { 
-        self.class.clone()
+    fn get_vtable(&self) -> &VTable {
+        &self.vtable
     }
     fn get_super_object(&self) -> Option<ObjectBox> {
         self.super_object.clone()
@@ -47,10 +48,15 @@ impl Object for StringObject {
         Some(self.value.len())
     }
     fn duplicate(&self) -> ObjectBox {
-        StringObject::make_object(self.class.clone(), self.super_object.clone().unwrap(), self.value.clone())
+        let string = StringObject::make_object(self.super_object.clone().unwrap().borrow().duplicate(), self.value.clone());
+        let mut str_obj = string.borrow_mut();
+        str_obj.initialize(Vec::new(), self.vtable.clone());
+        drop(str_obj);
+        string
     }
-    fn initalize(&mut self, _: Vec<ObjectBox>) {
-        panic!("String objects do not take arguments");
+    fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
+        self.vtable.extend(StringObject::make_vtable());
+        self.vtable.extend(vtable);
     }
 }
 

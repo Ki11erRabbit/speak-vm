@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::cell::RefCell;
-use crate::object::{Class, Object, ObjectBox};
+use crate::object::{Object, ObjectBox};
 use crate::object::Fault;
 use crate::vm::interpreter::Interpreter;
 use crate::object::Method;
@@ -17,7 +17,6 @@ use super::{ContextData, VTable};
 
 
 pub struct Block {
-    class: Arc<Class>,
     super_object: ObjectBox,
     pub bytecode: Vec<ByteCode>,
     vtable: VTable,
@@ -25,21 +24,20 @@ pub struct Block {
 
 
 impl Block {
-    pub fn make_class(parent: Arc<Class>) -> Class {
+    pub fn make_object(parent: ObjectBox,
+                       bytecode: Vec<ByteCode>) -> ObjectBox {
+        Rc::new(RefCell::new(Block {super_object: parent, bytecode, vtable: VTable::new_empty()})) as ObjectBox
+    }
+    pub fn make_vtable() -> VTable {
         let mut methods = HashMap::new();
         methods.insert(String::from("value"), Arc::new(Method::RustMethod { fun: Box::new(value) }));
-        Class::new(Some(parent), methods)
-    }
-    pub fn make_object(class: Arc<Class>,
-                       parent: ObjectBox,
-                       bytecode: Vec<ByteCode>) -> ObjectBox {
-        Rc::new(RefCell::new(Block {class, super_object: parent, bytecode, vtable: class.get_vtable()})) as ObjectBox
+        VTable::new(methods)
     }
 }
 
 impl Object for Block {
-    fn get_class(&self) -> Arc<Class> {
-        self.class.clone()
+    fn get_vtable(&self) -> &VTable {
+        &self.vtable
     }
     fn get_super_object(&self) -> Option<ObjectBox> {
         Some(self.super_object.clone())
@@ -54,9 +52,14 @@ impl Object for Block {
         None
     }
     fn duplicate(&self) -> ObjectBox {
-        Block::make_object(self.class.clone(), self.super_object.clone(), self.bytecode.clone())
+        let block = Block::make_object(self.super_object.borrow().duplicate(), self.bytecode.clone());
+        let mut blk = block.borrow_mut();
+        blk.initialize(Vec::new(), self.vtable.clone());
+        drop(blk);
+        block
     }
-    fn initalize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
+    fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
+        self.vtable.extend(Block::make_vtable());
         self.vtable.extend(vtable);
     }
 }
