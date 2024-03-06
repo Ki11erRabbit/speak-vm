@@ -59,13 +59,18 @@ impl Object for IntegerObject {
         drop(int);
         integer
     }
-    fn initialize(&mut self, arguments: Vec<ObjectBox>, vtable: crate::object::VTable) {
+    fn initialize(&mut self, _: Vec<ObjectBox>, vtable: crate::object::VTable) {
         let integer_vtable = IntegerObject::make_vtable();
-        let integer = self.get_super_object().unwrap().clone();
-        let mut integer = integer.borrow_mut();
-        integer.initialize(arguments, integer_vtable);
+        self.vtable.extend(integer_vtable);
         self.vtable.extend(vtable);
         
+        match &mut self.super_object {
+            Some(super_object) => {
+                let mut super_object = super_object.borrow_mut();
+                super_object.initialize(vec![], VTable::new_empty());
+            }
+            None => {}
+        }
     }
 }
 

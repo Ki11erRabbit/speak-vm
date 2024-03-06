@@ -52,7 +52,7 @@ impl Interpreter {
 
     fn store_temp(index: usize, context: &mut ContextData) {
         let value = context.pop().expect("Expected value");
-        context.arguments[index] = value;
+        context.set_argument(index, value);
     }
 
     fn send_msg(arg: usize, msg_index: String, context: &mut ContextData) {
@@ -60,12 +60,14 @@ impl Interpreter {
             let value = context.pop().expect("Expected argument");
             context.set_argument(i, value)
         }
+        context.arg_count = arg;
         let object = context.top().expect("Stack was empty").clone();
         let borrowed_object = object.borrow();
 
         let message = crate::object::create_message(&msg_index);
 
         let method = borrowed_object.process_message(message);
+        drop(borrowed_object);
         if let Some(method) = method {
             match *method {
                 Method::RustMethod { ref fun } => {
@@ -97,6 +99,7 @@ impl Interpreter {
             let value = context.pop().expect("Expected argument");
             context.set_argument(i, value)
         }
+        context.arg_count = arg;
         let object = context.top().expect("Stack was empty").clone();
         let borrowed_object = object.borrow();
 

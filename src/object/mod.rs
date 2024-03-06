@@ -13,6 +13,8 @@ use std::hash::Hash;
 use std::hash::Hasher;
 use std::sync::RwLock;
 
+use crate::vm::bytecode::ByteCode;
+
 use self::log::Logger;
 use self::primitive::boolean::BooleanObject;
 use self::primitive::character::CharacterObject;
@@ -109,11 +111,12 @@ impl Object for Nil {
         Nil::new()
     }
     fn initialize(&mut self, _arguments: Vec<ObjectBox>, _: VTable) {
-        panic!("Nil does not have fields");
+        ()
     }
 }
 
 pub struct BaseObject {
+    super_object: Option<ObjectBox>,
     vtable: VTable,
 }
 
@@ -135,12 +138,12 @@ impl BaseObject {
         methods.insert("hash".to_string(), Arc::new(Method::RustMethod { fun: Box::new(obj_hash) }));
         methods.insert("to_string".to_string(), Arc::new(Method::RustMethod { fun: Box::new(obj_to_string) }));
         methods.insert("order".to_string(), Arc::new(Method::RustMethod { fun: Box::new(obj_order) }));
-        methods.insert("initalize".to_string(), Arc::new(Method::RustMethod { fun: Box::new(obj_initalize) }));
+        methods.insert("init".to_string(), Arc::new(Method::RustMethod { fun: Box::new(obj_initalize) }));
         VTable::new(methods)
     }
 
-    pub fn make_object() -> ObjectBox {
-        Rc::new(RefCell::new(BaseObject {vtable: VTable::new_empty()})) as ObjectBox
+    pub fn make_object(parent: ObjectBox) -> ObjectBox {
+        Rc::new(RefCell::new(BaseObject {vtable: VTable::new_empty(), super_object: Some(parent)})) as ObjectBox
     }
 }
 
@@ -167,11 +170,22 @@ impl Object for BaseObject {
         None
     }
     fn duplicate(&self) -> ObjectBox {
-        BaseObject::make_object()
+        let obje = BaseObject::make_object(self.super_object.as_ref().unwrap().borrow().duplicate());
+        let mut obj = obje.borrow_mut();
+        obj.initialize(vec![], self.vtable.clone());
+        drop(obj);
+        obje
     }
     fn initialize(&mut self, _arguments: Vec<ObjectBox>, vtable: VTable) {
         self.vtable.extend(BaseObject::make_vtable());
         self.vtable.extend(vtable);
+        match &mut self.super_object {
+            Some(super_object) => {
+                let mut super_object = super_object.borrow_mut();
+                super_object.initialize(vec![], VTable::new_empty());
+            }
+            None => {}
+        }
     }
 }
 
@@ -238,14 +252,16 @@ fn obj_initalize(object: ObjectBox, context: &mut ContextData) -> Result<Option<
 
 
 pub struct ObjectStruct {
+    class: Option<Arc<Class>>,
     super_object: Option<ObjectBox>,
     fields: Box<[ObjectBox]>,
     vtable: VTable,
 }
 
 impl ObjectStruct {
-    pub fn new(super_object: Option<ObjectBox>) -> ObjectBox {
+    pub fn new(class: Option<Arc<Class>>, super_object: Option<ObjectBox>) -> ObjectBox {
         Rc::new(RefCell::new(ObjectStruct {
+            class,
             super_object,
             fields: Box::new([]),
             vtable: VTable::new_empty(),
@@ -276,6 +292,7 @@ impl Object for ObjectStruct {
             fields.push(field.clone());
         }
         let object = ObjectStruct {
+            class: self.class.clone(),
             super_object: self.super_object.clone(),
             fields: fields.into_boxed_slice(),
             vtable: self.vtable.clone(),
@@ -284,7 +301,25 @@ impl Object for ObjectStruct {
     }
     fn initialize(&mut self, arguments: Vec<ObjectBox>, vtable: VTable) {
         self.fields = arguments.into_boxed_slice();
+        self.vtable.extend(self.class.as_ref().unwrap().get_vtable());
         self.vtable.extend(vtable);
+        let mut super_object = self.super_object.clone();
+        let mut overrides = self.class.as_ref().unwrap().get_overrides();
+        while super_object.is_some() {
+            match super_object {
+                Some(super_object_ref) => {
+                    let mut super_object_ref2 = super_object_ref.borrow_mut();
+                    let vtable = match overrides.pop() {
+                        Some(vtable) => vtable,
+                        None => VTable::new_empty(),
+                    };
+                    super_object_ref2.initialize(vec![], vtable);
+                    drop(super_object_ref2);
+                    super_object = super_object_ref.borrow().get_super_object();
+                }
+                None => {}
+            }
+        }
     }
 }
 
@@ -335,6 +370,35 @@ impl Class {
         self.methods.clone()
     }
 }*/
+
+/// Class
+/// A Class is a prototype for objects. It contains a vtable of methods and a parent class name.
+/// This is so that we can build the object.
+pub struct Class {
+    parent: Option<String>,
+    methods: VTable,
+    overrides: Vec<VTable>,
+}
+
+impl Class {
+    pub fn new(parent: Option<&str>, methods: VTable, overrides: Vec<VTable>) -> Class {
+        Class {
+            parent: parent.map(|x| x.to_string()),
+            methods,
+            overrides,
+        }
+    }
+    pub fn get_method(&self, index: &str) -> Option<Arc<Method>> {
+        self.methods.get_method(index)
+    }
+    pub fn get_vtable(&self) -> VTable {
+        self.methods.clone()
+    }
+    pub fn get_overrides(&self) -> Vec<VTable> {
+        self.overrides.clone()
+    }
+}
+
 
 unsafe impl Send for Method {}
 unsafe impl Sync for Method {}
@@ -422,14 +486,14 @@ lazy_static! {
 
 
 pub struct ObjectFactory {
-    //classes: HashMap<String, Arc<Class>>,
+    classes: HashMap<String, Arc<Class>>,
     parents: HashMap<String, String>,
 }
 
 impl ObjectFactory {
     fn new() -> ObjectFactory {
         let mut context = ObjectFactory {
-            //classes: HashMap::new(),
+            classes: HashMap::new(),
             parents: HashMap::new(),
         };
         
@@ -457,15 +521,29 @@ impl ObjectFactory {
 
         context
     }
+    fn add_class(&mut self, name: &str, class: Class) {
+        match &class.parent {
+            Some(parent) => {
+                self.parents.insert(name.to_string(), parent.to_string());
+            }
+            None => {}
+        }
+        let class = Arc::new(class);
+        self.classes.insert(name.to_string(), class);
+    }
+    fn get_class(&self, name: &str) -> Option<Arc<Class>> {
+        self.classes.get(name).cloned()
+    } 
+
     fn create_base_object(&self) -> ObjectBox {
-        BaseObject::make_object()
+        let object = BaseObject::make_object(Nil::new());
+        let mut object_mut = object.borrow_mut();
+        object_mut.initialize(vec![], VTable::new_empty());
+        drop(object_mut);
+        object
     }
     fn create_boolean(&self, value: bool) -> ObjectBox {
-        let boolean = BooleanObject::make_object(self.create_base_object(), value);
-        let mut object = boolean.borrow_mut();
-        object.initialize(vec![], VTable::new_empty());
-        drop(object);
-        boolean
+        BooleanObject::make_object(self.create_base_object(), value)
     }
     fn create_number(&self) -> ObjectBox {
         let number = NumberObject::make_object(self.create_base_object());
@@ -482,136 +560,64 @@ impl ObjectFactory {
         number
     }
     fn create_i64(&self, value: i64) -> ObjectBox {
-        let number = I64Object::make_object(self.create_integer(), value);
-        let mut object = number.borrow_mut();
-        object.initialize(vec![], VTable::new_empty());
-        drop(object);
-        number
-
+        I64Object::make_object(self.create_integer(), value) 
     }
     fn create_u64(&self, value: u64) -> ObjectBox {
-        let number = U64Object::make_object(self.create_integer(), value);
-        let mut object = number.borrow_mut();
-        object.initialize(vec![], VTable::new_empty());
-        drop(object);
-        number
-
+        U64Object::make_object(self.create_integer(), value)
     }
     fn create_i32(&self, value: i32) -> ObjectBox {
-        let number = I32Object::make_object(self.create_integer(), value);
-        let mut object = number.borrow_mut();
-        object.initialize(vec![], VTable::new_empty());
-        drop(object);
-        number
-
+        I32Object::make_object(self.create_integer(), value)
     }
     fn create_u32(&self, value: u32) -> ObjectBox {
-        let number = U32Object::make_object(self.create_integer(), value);
-        let mut object = number.borrow_mut();
-        object.initialize(vec![], VTable::new_empty());
-        drop(object);
-        number
-
+        U32Object::make_object(self.create_integer(), value)
     }
     fn create_i16(&self, value: i16) -> ObjectBox {
-        let number = I16Object::make_object(self.create_integer(), value);
-        let mut object = number.borrow_mut();
-        object.initialize(vec![], VTable::new_empty());
-        drop(object);
-        number
-
+        I16Object::make_object(self.create_integer(), value) 
     }
     fn create_u16(&self, value: u16) -> ObjectBox {
-        let number = U16Object::make_object(self.create_integer(), value);
-        let mut object = number.borrow_mut();
-        object.initialize(vec![], VTable::new_empty());
-        drop(object);
-        number
-
+        U16Object::make_object(self.create_integer(), value)
     }
     fn create_i8(&self, value: i8) -> ObjectBox {
-        let number = I8Object::make_object(self.create_integer(), value);
-        let mut object = number.borrow_mut();
-        object.initialize(vec![], VTable::new_empty());
-        drop(object);
-        number
-
+        I8Object::make_object(self.create_integer(), value)
     }
     fn create_u8(&self, value: u8) -> ObjectBox {
-        let number = U8Object::make_object(self.create_integer(), value);
-        let mut object = number.borrow_mut();
-        object.initialize(vec![], VTable::new_empty());
-        drop(object);
-        number
-
+        U8Object::make_object(self.create_integer(), value)
     }
     fn create_float(&self) -> ObjectBox {
-        let number = FloatObject::make_object(self.create_number());
-        let mut object = number.borrow_mut();
-        object.initialize(vec![], VTable::new_empty());
-        drop(object);
-        number
-
+        FloatObject::make_object(self.create_number())
     }
     fn create_f64(&self, value: f64) -> ObjectBox {
-        let number = F64Object::make_object(self.create_float(), value);
-        let mut object = number.borrow_mut();
-        object.initialize(vec![], VTable::new_empty());
-        drop(object);
-        number
-
+        F64Object::make_object(self.create_float(), value) 
     }
     fn create_f32(&self, value: f32) -> ObjectBox {
-        let number = F32Object::make_object(self.create_float(), value);
-        let mut object = number.borrow_mut();
-        object.initialize(vec![], VTable::new_empty());
-        drop(object);
-        number
-
+        F32Object::make_object(self.create_float(), value)
     }
     fn create_string(&self, value: String) -> ObjectBox {
-        let string = StringObject::make_object(self.create_base_object(), value);
-        let mut object = string.borrow_mut();
-        object.initialize(vec![], VTable::new_empty());
-        drop(object);
-        string
+        StringObject::make_object(self.create_base_object(), value)    
     }
     fn create_character(&self, value: char) -> ObjectBox {
-        let character = CharacterObject::make_object(self.create_base_object(), value);
-        let mut object = character.borrow_mut();
-        object.initialize(vec![], VTable::new_empty());
-        drop(object);
-        character
+        CharacterObject::make_object(self.create_base_object(), value)    
     }
     fn create_message(&self, index: &str) -> ObjectBox {
-        let msg = Message::make_object(self.create_base_object(), index.to_string());
-        let mut object = msg.borrow_mut();
-        object.initialize(vec![], VTable::new_empty());
-        drop(object);
-        msg
+        Message::make_object(self.create_base_object(), index.to_string()) 
     }
     fn create_logger(&self) -> ObjectBox {
-        let log = Logger::make_object(self.create_base_object());
-        let mut object = log .borrow_mut();
-        object.initialize(vec![], VTable::new_empty());
-        drop(object);
-        log
+        Logger::make_object(self.create_base_object())
     }
     fn init_stack(&self) -> ObjectBox {
-        let framedata = vec![Context::make_object()];
+        let context = Context::make_object();
+        let mut context_mut = context.borrow_mut();
+        context_mut.initialize(vec![], VTable::new_empty());
+        drop(context_mut);
+        let framedata = vec![context];
         let frame = vec![stack::Stack::make_object_with_stack(self.create_base_object(),framedata)];
-        let stack = stack::Stack::make_object_with_stack(self.create_base_object(), frame);
-        let mut object = stack.borrow_mut();
-        object.initialize(vec![], VTable::new_empty());
-        drop(object);
-        stack
+        stack::Stack::make_object_with_stack(self.create_base_object(), frame) 
     }
     fn create_stack(&self) -> ObjectBox {
-        let stack = stack::Stack::make_object(self.create_base_object());
-        let mut object = stack.borrow_mut();
-        object.initialize(vec![], VTable::new_empty());
-        drop(object);
-        stack
+        stack::Stack::make_object(self.create_base_object())
+    }
+    fn create_block(&self, bytecode: Vec<ByteCode>) -> ObjectBox {
+        block::Block::make_object(self.create_base_object(), bytecode)
     }
 
     fn make_parent(&self, name: &str) -> Result<ObjectBox, Fault> {
@@ -647,10 +653,9 @@ impl ObjectFactory {
             },
             "Logger" => Ok(self.create_logger()),
             "Stack" => Ok(self.create_stack()),
+            "Block" => Ok(self.create_block(vec![])),
             x => {
-                let object = ObjectStruct::new(Some(self.make_parent(x)?));
-                let mut object_mut = object.borrow_mut();
-                drop(object_mut);
+                let object = ObjectStruct::new(self.get_class(x), Some(self.make_parent(x)?));
                 Ok(object)
             }
         }
@@ -683,64 +688,125 @@ fn get_factory_mut<'a>() -> std::sync::RwLockWriteGuard<'a, ObjectFactory> {
     }
 }
 
+pub fn add_class(name: &str, class: Class) {
+    let mut factory = get_factory_mut();
+    factory.add_class(name, class);
+}
+
 pub fn create_base_object() -> ObjectBox {
     get_factory().create_base_object()
 }
 
 pub fn create_boolean(value: bool) -> ObjectBox {
-    get_factory().create_boolean(value)
+    let boolean = get_factory().create_boolean(value);
+    let mut object = boolean.borrow_mut();
+    object.initialize(vec![], VTable::new_empty());
+    drop(object);
+    boolean
 }
 
 pub fn create_i64(value: i64) -> ObjectBox {
-    get_factory().create_i64(value)
+    let integer = get_factory().create_i64(value);
+    let mut object = integer.borrow_mut();
+    object.initialize(vec![], VTable::new_empty());
+    drop(object);
+    integer
 }
 
 pub fn create_u64(value: u64) -> ObjectBox {
-    get_factory().create_u64(value)
+    let integer = get_factory().create_u64(value);
+    let mut object = integer.borrow_mut();
+    object.initialize(vec![], VTable::new_empty());
+    drop(object);
+    integer
 }
 
 pub fn create_i32(value: i32) -> ObjectBox {
-    get_factory().create_i32(value)
+    let integer = get_factory().create_i32(value);
+    let mut object = integer.borrow_mut();
+    object.initialize(vec![], VTable::new_empty());
+    drop(object);
+    integer
 }
 
 pub fn create_u32(value: u32) -> ObjectBox {
-    get_factory().create_u32(value)
+    let integer = get_factory().create_u32(value);
+    let mut object = integer.borrow_mut();
+    object.initialize(vec![], VTable::new_empty());
+    drop(object);
+    integer
 }
 
 pub fn create_i16(value: i16) -> ObjectBox {
-    get_factory().create_i16(value)
+    let integer = get_factory().create_i16(value);
+    let mut object = integer.borrow_mut();
+    object.initialize(vec![], VTable::new_empty());
+    drop(object);
+    integer
 }
 
 pub fn create_u16(value: u16) -> ObjectBox {
-    get_factory().create_u16(value)
+    let integer = get_factory().create_u16(value);
+    let mut object = integer.borrow_mut();
+    object.initialize(vec![], VTable::new_empty());
+    drop(object);
+    integer
 }
 
 pub fn create_i8(value: i8) -> ObjectBox {
-    get_factory().create_i8(value)
+    let integer = get_factory().create_i8(value);
+    let mut object = integer.borrow_mut();
+    object.initialize(vec![], VTable::new_empty());
+    drop(object);
+    integer
 }
 
 pub fn create_u8(value: u8) -> ObjectBox {
-    get_factory().create_u8(value)
+    let integer = get_factory().create_u8(value);
+    let mut object = integer.borrow_mut();
+    object.initialize(vec![], VTable::new_empty());
+    drop(object);
+    integer
 }
 
 pub fn create_f64(value: f64) -> ObjectBox {
-    get_factory().create_f64(value)
+    let float = get_factory().create_f64(value);
+    let mut object = float.borrow_mut();
+    object.initialize(vec![], VTable::new_empty());
+    drop(object);
+    float
 }
 
 pub fn create_f32(value: f32) -> ObjectBox {
-    get_factory().create_f32(value)
+    let float = get_factory().create_f32(value);
+    let mut object = float.borrow_mut();
+    object.initialize(vec![], VTable::new_empty());
+    drop(object);
+    float
 }
 
 pub fn create_string(value: String) -> ObjectBox {
-    get_factory().create_string(value)
+    let string = get_factory().create_string(value);
+    let mut object = string.borrow_mut();
+    object.initialize(vec![], VTable::new_empty());
+    drop(object);
+    string
 }
 
 pub fn create_character(value: char) -> ObjectBox {
-    get_factory().create_character(value)
+    let character = get_factory().create_character(value);
+    let mut object = character.borrow_mut();
+    object.initialize(vec![], VTable::new_empty());
+    drop(object);
+    character
 }
 
 pub fn create_message(index: &str) -> ObjectBox {
-    get_factory().create_message(index)
+    let msg = get_factory().create_message(index);
+    let mut object = msg.borrow_mut();
+    object.initialize(vec![], VTable::new_empty());
+    drop(object);
+    msg
 }
 
 pub fn create_logger() -> ObjectBox {
@@ -748,11 +814,27 @@ pub fn create_logger() -> ObjectBox {
 }
 
 pub fn init_stack() -> ObjectBox {
-    get_factory().init_stack()
+    let stack = get_factory().init_stack();
+    let mut object = stack.borrow_mut();
+    object.initialize(vec![], VTable::new_empty());
+    drop(object);
+    stack
 }
 
 pub fn create_stack() -> ObjectBox {
-    get_factory().create_stack()
+    let stack = get_factory().create_stack();
+    let mut object = stack.borrow_mut();
+    object.initialize(vec![], VTable::new_empty());
+    drop(object);
+    stack
+}
+
+pub fn create_block(bytecode: Vec<ByteCode>) -> ObjectBox {
+    let block = get_factory().create_block(bytecode);
+    let mut object = block.borrow_mut();
+    object.initialize(vec![], VTable::new_empty());
+    drop(object);
+    block
 }
 
 

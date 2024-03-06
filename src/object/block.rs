@@ -18,8 +18,8 @@ use super::{ContextData, VTable};
 
 pub struct Block {
     super_object: ObjectBox,
-    pub bytecode: Vec<ByteCode>,
     vtable: VTable,
+    pub bytecode: Vec<ByteCode>,
 }
 
 
@@ -61,6 +61,7 @@ impl Object for Block {
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
         self.vtable.extend(Block::make_vtable());
         self.vtable.extend(vtable);
+        self.super_object.borrow_mut().initialize(vec![], VTable::new_empty());
     }
 }
 

@@ -69,6 +69,13 @@ impl Object for FloatObject {
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
         self.vtable.extend(FloatObject::make_vtable());
         self.vtable.extend(vtable);
+        match &mut self.super_object {
+            Some(super_object) => {
+                let mut super_object = super_object.borrow_mut();
+                super_object.initialize(vec![], VTable::new_empty());
+            }
+            None => {}
+        }
     }
 }
 
