@@ -13,6 +13,32 @@ use crate::object::create_boolean;
 use crate::object::VTable;
 
 
+trait Abs {
+    fn abs(self) -> Self;
+}
+
+impl Abs for u64 {
+    fn abs(self) -> u64 {
+        self
+    }
+}
+impl Abs for u32 {
+    fn abs(self) -> u32 {
+        self
+    }
+}
+impl Abs for u16 {
+    fn abs(self) -> u16 {
+        self
+    }
+}
+impl Abs for u8 {
+    fn abs(self) -> u8 {
+        self
+    }
+}
+
+
 pub struct IntegerObject {
     super_object: Option<ObjectBox>,
     vtable: VTable,
@@ -308,6 +334,9 @@ impl I64Object {
         methods.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(i64_mul) }));
         methods.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(i64_div) }));
         methods.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(i64_mod) }));
+        methods.insert(String::from("abs"), Arc::new(Method::RustMethod { fun: Box::new(i64_abs) }));
+        methods.insert(String::from("pow"), Arc::new(Method::RustMethod { fun: Box::new(i64_pow) }));
+        methods.insert(String::from("is_zero"), Arc::new(Method::RustMethod { fun: Box::new(i64_is_zero) }));
         VTable::new(methods)
     }
     pub fn make_integer_vtable() -> VTable {
@@ -360,7 +389,7 @@ impl Object for PrimitiveObject<i64> {
     }
 }
 
-create_type_ops!(i64, i64_add, i64_sub, i64_mul, i64_div, i64_mod);
+create_type_ops!(i64, i64_add, i64_sub, i64_mul, i64_div, i64_mod, i64_abs, i64_pow, i64_is_zero);
 create_integer_ops!(i64, i64_divides, i64_shr, i64_shl, i64_and, i64_or, i64_xor);
 
 pub struct U64Object {
@@ -378,6 +407,9 @@ impl U64Object {
         methods.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(u64_mul) }));
         methods.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(u64_div) }));
         methods.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(u64_mod) }));
+        methods.insert(String::from("abs"), Arc::new(Method::RustMethod { fun: Box::new(u64_abs) }));
+        methods.insert(String::from("pow"), Arc::new(Method::RustMethod { fun: Box::new(u64_pow) }));
+        methods.insert(String::from("is_zero"), Arc::new(Method::RustMethod { fun: Box::new(u64_is_zero) }));
         VTable::new(methods)
     }
     pub fn make_integer_vtable() -> VTable {
@@ -430,7 +462,7 @@ impl Object for PrimitiveObject<u64> {
     }
 }
 
-create_type_ops!(u64, u64_add, u64_sub, u64_mul, u64_div, u64_mod);
+create_type_ops!(u64, u64_add, u64_sub, u64_mul, u64_div, u64_mod, u64_abs, u64_pow, u64_is_zero);
 create_integer_ops!(u64, u64_divides, u64_shr, u64_shl, u64_and, u64_or, u64_xor);
 
 pub struct I32Object {
@@ -448,6 +480,9 @@ impl I32Object {
         methods.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(i32_mul) }));
         methods.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(i32_div) }));
         methods.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(i32_mod) }));
+        methods.insert(String::from("abs"), Arc::new(Method::RustMethod { fun: Box::new(i32_abs) }));
+        methods.insert(String::from("pow"), Arc::new(Method::RustMethod { fun: Box::new(i32_pow) }));
+        methods.insert(String::from("is_zero"), Arc::new(Method::RustMethod { fun: Box::new(i32_is_zero) }));
         VTable::new(methods)
     }
     pub fn make_integer_vtable() -> VTable {
@@ -500,7 +535,7 @@ impl Object for PrimitiveObject<i32> {
     }
 }
 
-create_type_ops!(i32, i32_add, i32_sub, i32_mul, i32_div, i32_mod);
+create_type_ops!(i32, i32_add, i32_sub, i32_mul, i32_div, i32_mod, i32_abs, i32_pow, i32_is_zero);
 create_integer_ops!(i32, i32_divides, i32_shr, i32_shl, i32_and, i32_or, i32_xor);
 
 pub struct U32Object {
@@ -518,6 +553,9 @@ impl U32Object {
         methods.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(u32_mul) }));
         methods.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(u32_div) }));
         methods.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(u32_mod) }));
+        methods.insert(String::from("abs"), Arc::new(Method::RustMethod { fun: Box::new(u32_abs) }));
+        methods.insert(String::from("pow"), Arc::new(Method::RustMethod { fun: Box::new(u32_pow) }));
+        methods.insert(String::from("is_zero"), Arc::new(Method::RustMethod { fun: Box::new(u32_is_zero) }));
         VTable::new(methods)
     }
     pub fn make_integer_vtable() -> VTable {
@@ -570,7 +608,7 @@ impl Object for PrimitiveObject<u32> {
     }
 }
 
-create_type_ops!(u32, u32_add, u32_sub, u32_mul, u32_div, u32_mod);
+create_type_ops!(u32, u32_add, u32_sub, u32_mul, u32_div, u32_mod, u32_abs, u32_pow, u32_is_zero);
 create_integer_ops!(u32, u32_divides, u32_shr, u32_shl, u32_and, u32_or, u32_xor);
 
 pub struct I16Object {
@@ -588,6 +626,9 @@ impl I16Object {
         methods.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(i16_mul) }));
         methods.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(i16_div) }));
         methods.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(i16_mod) }));
+        methods.insert(String::from("abs"), Arc::new(Method::RustMethod { fun: Box::new(i16_abs) }));
+        methods.insert(String::from("pow"), Arc::new(Method::RustMethod { fun: Box::new(i16_pow) }));
+        methods.insert(String::from("is_zero"), Arc::new(Method::RustMethod { fun: Box::new(i16_is_zero) }));
         VTable::new(methods)
     }
     pub fn make_integer_vtable() -> VTable {
@@ -640,7 +681,7 @@ impl Object for PrimitiveObject<i16> {
     }
 }
 
-create_type_ops!(i16, i16_add, i16_sub, i16_mul, i16_div, i16_mod);
+create_type_ops!(i16, i16_add, i16_sub, i16_mul, i16_div, i16_mod, i16_abs, i16_pow, i16_is_zero);
 create_integer_ops!(i16, i16_divides, i16_shr, i16_shl, i16_and, i16_or, i16_xor);
 
 
@@ -659,6 +700,9 @@ impl U16Object {
         methods.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(u16_mul) }));
         methods.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(u16_div) }));
         methods.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(u16_mod) }));
+        methods.insert(String::from("abs"), Arc::new(Method::RustMethod { fun: Box::new(u16_abs) }));
+        methods.insert(String::from("pow"), Arc::new(Method::RustMethod { fun: Box::new(u16_pow) }));
+        methods.insert(String::from("is_zero"), Arc::new(Method::RustMethod { fun: Box::new(u16_is_zero) }));
         VTable::new(methods)
     }
     pub fn make_integer_vtable() -> VTable {
@@ -711,7 +755,7 @@ impl Object for PrimitiveObject<u16> {
     }
 }
 
-create_type_ops!(u16, u16_add, u16_sub, u16_mul, u16_div, u16_mod);
+create_type_ops!(u16, u16_add, u16_sub, u16_mul, u16_div, u16_mod, u16_abs, u16_pow, u16_is_zero);
 create_integer_ops!(u16, u16_divides, u16_shr, u16_shl, u16_and, u16_or, u16_xor);
 
 pub struct I8Object {
@@ -729,6 +773,9 @@ impl I8Object {
         methods.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(i8_mul) }));
         methods.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(i8_div) }));
         methods.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(i8_mod) }));
+        methods.insert(String::from("abs"), Arc::new(Method::RustMethod { fun: Box::new(i8_abs) }));
+        methods.insert(String::from("pow"), Arc::new(Method::RustMethod { fun: Box::new(i8_pow) }));
+        methods.insert(String::from("is_zero"), Arc::new(Method::RustMethod { fun: Box::new(i8_is_zero) }));
         VTable::new(methods)
     }
     pub fn make_integer_vtable() -> VTable {
@@ -781,7 +828,7 @@ impl Object for PrimitiveObject<i8> {
     }
 }
 
-create_type_ops!(i8, i8_add, i8_sub, i8_mul, i8_div, i8_mod);
+create_type_ops!(i8, i8_add, i8_sub, i8_mul, i8_div, i8_mod, i8_abs, i8_pow, i8_is_zero);
 create_integer_ops!(i8, i8_divides, i8_shr, i8_shl, i8_and, i8_or, i8_xor);
 
 pub struct U8Object {
@@ -799,6 +846,9 @@ impl U8Object {
         methods.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(u8_mul) }));
         methods.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(u8_div) }));
         methods.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(u8_mod) }));
+        methods.insert(String::from("abs"), Arc::new(Method::RustMethod { fun: Box::new(u8_abs) }));
+        methods.insert(String::from("pow"), Arc::new(Method::RustMethod { fun: Box::new(u8_pow) }));
+        methods.insert(String::from("is_zero"), Arc::new(Method::RustMethod { fun: Box::new(u8_is_zero) }));
         VTable::new(methods)
     }
     pub fn make_integer_vtable() -> VTable {
@@ -851,7 +901,7 @@ impl Object for PrimitiveObject<u8> {
     }
 }
 
-create_type_ops!(u8, u8_add, u8_sub, u8_mul, u8_div, u8_mod);
+create_type_ops!(u8, u8_add, u8_sub, u8_mul, u8_div, u8_mod, u8_abs, u8_pow, u8_is_zero);
 create_integer_ops!(u8, u8_divides, u8_shr, u8_shl, u8_and, u8_or, u8_xor);
 
 

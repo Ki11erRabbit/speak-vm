@@ -92,7 +92,7 @@ impl Interpreter {
                     match fun(object.clone(), context) {
                         Ok(Some(result)) => context.push(result),
                         Ok(None) => {}
-                        Err(_) => unimplemented!("Implement errors")
+                        Err(err) => return Err(err)
                     }
                 }
                 Method::BytecodeMethod { ref block } => {
@@ -101,7 +101,7 @@ impl Interpreter {
                     let object = block.borrow();
                     let object = object.downcast_ref::<Block>().expect("Expected block");
                     for code in object.bytecode.iter() {
-                        Self::run(context, code);
+                        Self::run(context, code)?;
                     }
                     context.pop_frame();
 
@@ -135,7 +135,7 @@ impl Interpreter {
                     match fun(parent.clone(), context) {
                         Ok(Some(result)) => context.push(result),
                         Ok(None) => {}
-                        Err(_) => unimplemented!("Implement errors")
+                        Err(err) => return Err(err)
                     }
                 }
                 Method::BytecodeMethod { ref block } => {
@@ -144,7 +144,7 @@ impl Interpreter {
                     let object = block.borrow();
                     let object = object.downcast_ref::<Block>().expect("Expected block");
                     for code in object.bytecode.iter() {
-                        Self::run(context, code);
+                        Self::run(context, code)?;
                     }
                     context.pop_frame();
                 }

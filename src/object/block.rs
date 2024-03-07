@@ -34,6 +34,12 @@ impl Block {
         methods.insert(String::from("value"), Arc::new(Method::RustMethod { fun: Box::new(value) }));
         VTable::new(methods)
     }
+    pub fn call(&self, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
+        for code in self.bytecode.iter() {
+            Interpreter::run(context, code)?;
+        }
+        Ok(None)
+    }
 }
 
 impl Object for Block {

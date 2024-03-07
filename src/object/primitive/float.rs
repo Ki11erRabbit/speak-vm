@@ -10,6 +10,23 @@ use crate::object::primitive::PrimitiveObject;
 use crate::object::ContextData;
 use crate::object::create_boolean;
 
+trait Pow {
+    fn pow(self, exponent: u32) -> Self;
+}
+
+impl Pow for f64 {
+    fn pow(self, exponent: u32) -> Self {
+        self.powf(exponent as f64)
+    }
+}
+
+impl Pow for f32 {
+    fn pow(self, exponent: u32) -> Self {
+        self.powf(exponent as f32)
+    }
+}
+
+
 pub struct FloatObject {
     super_object: Option<ObjectBox>,
     vtable: VTable,
@@ -304,6 +321,9 @@ impl F64Object {
         number_vtable.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(f64_mul) }));
         number_vtable.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(f64_div) }));
         number_vtable.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(f64_mod) }));
+        number_vtable.insert(String::from("abs"), Arc::new(Method::RustMethod { fun: Box::new(f64_abs) }));
+        number_vtable.insert(String::from("pow"), Arc::new(Method::RustMethod { fun: Box::new(f64_pow) }));
+        number_vtable.insert(String::from("is_zero"), Arc::new(Method::RustMethod { fun: Box::new(f64_is_zero) }));
         VTable::new(number_vtable)
     }
     pub fn make_float_vtable() -> VTable {
@@ -368,7 +388,7 @@ impl Object for PrimitiveObject<f64> {
     }
 }
 
-create_type_ops!(f64, f64_add, f64_sub, f64_mul, f64_div, f64_mod);
+create_type_ops!(f64, f64_add, f64_sub, f64_mul, f64_div, f64_mod, f64_abs, f64_pow, f64_is_zero);
 create_float_ops!(f64, f64_is_nan, f64_is_infinity, f64_is_neg_infinity, f64_is_finite, f64_is_normal, f64_floor, f64_ceil, f64_nat_log, f64_log, f64_hypotenuse, f64_sin, f64_cos, f64_tan, f64_arcsin, f64_arccos, f64_arctan);
 
 pub struct F32Object {
@@ -386,6 +406,9 @@ impl F32Object {
         number_vtable.insert(String::from("mul"), Arc::new(Method::RustMethod { fun: Box::new(f32_mul) }));
         number_vtable.insert(String::from("div"), Arc::new(Method::RustMethod { fun: Box::new(f32_div) }));
         number_vtable.insert(String::from("mod"), Arc::new(Method::RustMethod { fun: Box::new(f32_mod) }));
+        number_vtable.insert(String::from("abs"), Arc::new(Method::RustMethod { fun: Box::new(f32_abs) }));
+        number_vtable.insert(String::from("pow"), Arc::new(Method::RustMethod { fun: Box::new(f32_pow) }));
+        number_vtable.insert(String::from("is_zero"), Arc::new(Method::RustMethod { fun: Box::new(f32_is_zero) }));
         let number_vtable = VTable::new(number_vtable);
         number_vtable
     }
@@ -451,5 +474,5 @@ impl Object for PrimitiveObject<f32> {
 }
 
 
-create_type_ops!(f32, f32_add, f32_sub, f32_mul, f32_div, f32_mod);
+create_type_ops!(f32, f32_add, f32_sub, f32_mul, f32_div, f32_mod, f32_abs, f32_pow, f32_is_zero);
 create_float_ops!(f32, f32_is_nan, f32_is_infinity, f32_is_neg_infinity, f32_is_finite, f32_is_normal, f32_floor, f32_ceil, f32_nat_log, f32_log, f32_hypotenuse, f32_sin, f32_cos, f32_tan, f32_arcsin, f32_arccos, f32_arctan);

@@ -3,6 +3,7 @@ pub mod stack;
 pub mod block;
 pub mod string;
 pub mod log;
+pub mod vector;
 
 use lazy_static::lazy_static;
 use std::sync::Arc;
@@ -49,7 +50,6 @@ impl std::fmt::Display for Fault {
 impl std::error::Error for Fault {}
 
 pub type ObjectBox = Rc<RefCell<dyn Object>>;
-
 
 
 pub trait Object: downcast_rs::Downcast {
@@ -463,8 +463,23 @@ pub enum Method {
     },
 }
 
+impl Method {
+    pub fn call(&self, object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
+        match self {
+            Method::RustMethod { fun } => {
+                fun(object, context)
+            },
+            Method::BytecodeMethod { block } => {
+                let block = block.borrow();
+                let block = block.downcast_ref::<block::Block>().unwrap();
+                block.call(context)
+            }
+        }
+    }
+}
+
 impl crate::vm::binary::ToBinary for Method {
-    fn to_binary(&self, string_table: Option<&mut crate::vm::binary::StringTable>) -> Vec<u8> {
+    fn to_binary(&self, _: Option<&mut crate::vm::binary::StringTable>) -> Vec<u8> {
         let mut output = Vec::new(); 
         match self {
             Method::RustMethod { fun: _ } => {

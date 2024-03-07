@@ -66,7 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let instructions = vec![
         ByteCode::StoreTemp(3),
         ByteCode::AccessTemp(3),
-        ByteCode::PushLiteral(Literal::String(String::from("Hello World"))),
+        ByteCode::PushLiteral(Literal::String(String::from("hello_world"))),
         ByteCode::SendMsg(1,String::from("new")),
         ByteCode::SendMsg(0,String::from("init")),
         ByteCode::SendMsg(0,String::from("println")),

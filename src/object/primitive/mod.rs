@@ -121,7 +121,7 @@ fn number_is_zero(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>
 
 #[macro_export]
 macro_rules! create_type_ops {
-    ($type:ty, $add_name:ident, $sub_name:ident, $mul_name:ident, $div_name:ident, $mod_name:ident) => {
+    ($type:ty, $add_name:ident, $sub_name:ident, $mul_name:ident, $div_name:ident, $mod_name:ident, $abs:ident, $pow:ident, $is_zero:ident) => {
 
         fn $add_name(object: ObjectBox, context: &mut crate::object::ContextData) -> Result<Option<ObjectBox>, Fault> {
             {
@@ -150,12 +150,13 @@ macro_rules! create_type_ops {
                         } else if let Some(arg) = arg_mut.downcast_mut::<crate::object::primitive::PrimitiveObject<f64>>() {
                             arg.data += object.data as f64;
                             drop(arg_mut);
+                            context.pop();
                             return Ok(Some(original_arg));
                         } else if let Some(arg) = arg_mut.downcast_mut::<crate::object::primitive::PrimitiveObject<f32>>() {
                             arg.data += object.data as f32;
                             drop(arg_mut);
+                            context.pop();
                             return Ok(Some(original_arg));
-                                            
                         } else {
                             return Err(Fault::InvalidType);
                         }
@@ -195,12 +196,13 @@ macro_rules! create_type_ops {
                         } else if let Some(arg) = arg_mut.downcast_mut::<crate::object::primitive::PrimitiveObject<f64>>() {
                             arg.data -= object.data as f64;
                             drop(arg_mut);
+                            context.pop();
                             return Ok(Some(original_arg));
                         } else if let Some(arg) = arg_mut.downcast_mut::<crate::object::primitive::PrimitiveObject<f32>>() {
                             arg.data -= object.data as f32;
                             drop(arg_mut);
+                            context.pop();
                             return Ok(Some(original_arg));
-                                            
                         } else {
                             return Err(Fault::InvalidType);
                         }
@@ -241,12 +243,13 @@ macro_rules! create_type_ops {
                         } else if let Some(arg) = arg_mut.downcast_mut::<crate::object::primitive::PrimitiveObject<f64>>() {
                             arg.data *= object.data as f64;
                             drop(arg_mut);
+                            context.pop();
                             return Ok(Some(original_arg));
                         } else if let Some(arg) = arg_mut.downcast_mut::<crate::object::primitive::PrimitiveObject<f32>>() {
                             arg.data *= object.data as f32;
                             drop(arg_mut);
+                            context.pop();
                             return Ok(Some(original_arg));
-                                            
                         } else {
                             return Err(Fault::InvalidType);
                         }
@@ -313,6 +316,7 @@ macro_rules! create_type_ops {
                             }
                             arg.data = object.data as f64 / arg.data;
                             drop(arg_mut);
+                            context.pop();
                             return Ok(Some(original_arg));
                         } else if let Some(arg) = arg_mut.downcast_mut::<crate::object::primitive::PrimitiveObject<f32>>() {
                             if arg.data.is_zero() {
@@ -320,6 +324,7 @@ macro_rules! create_type_ops {
                             }
                             arg.data = object.data as f32 / arg.data;
                             drop(arg_mut);
+                            context.pop();
                             return Ok(Some(original_arg));
                         } else {
                             return Err(Fault::InvalidType);
@@ -387,6 +392,7 @@ macro_rules! create_type_ops {
                             }
                             arg.data = object.data as f64 % arg.data;
                             drop(arg_mut);
+                            context.pop();
                             return Ok(Some(original_arg));
                         } else if let Some(arg) = arg_mut.downcast_mut::<crate::object::primitive::PrimitiveObject<f32>>() {
                             if arg.data.is_zero() {
@@ -394,6 +400,7 @@ macro_rules! create_type_ops {
                             }
                             arg.data = object.data as f32 % arg.data;
                             drop(arg_mut);
+                            context.pop();
                             return Ok(Some(original_arg));
                         } else {
                             return Err(Fault::InvalidType);
@@ -405,6 +412,75 @@ macro_rules! create_type_ops {
                 }
             }
             Ok(None)
+        }
+        
+        fn $abs(object: ObjectBox, _: &mut crate::object::ContextData) -> Result<Option<ObjectBox>, Fault> {
+            let mut object = object.borrow_mut();
+            if let Some(object) = object.downcast_mut::<crate::object::primitive::PrimitiveObject<$type>>() {
+                object.data = object.data.abs();
+            } else {
+                return Err(Fault::InvalidType)
+            }
+            Ok(None)
+        }
+
+        fn $pow(object: ObjectBox, context: &mut crate::object::ContextData) -> Result<Option<ObjectBox>, Fault> {
+            {
+                let mut object = object.borrow_mut();
+                let object = object.downcast_mut::<crate::object::primitive::PrimitiveObject<$type>>();
+                let original_arg = context.arguments[0].clone();
+                let mut arg_mut = original_arg.borrow_mut();
+                match object {
+                    Some(object) => {
+                        if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<i64>>() {
+                            object.data = object.data.pow(arg.data as u32);
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<i32>>() {
+                            object.data = object.data.pow(arg.data as u32);
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<i16>>() {
+                            object.data = object.data.pow(arg.data as u32);
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<i8>>() {
+                            object.data = object.data.pow(arg.data as u32);
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<u64>>() {
+                            object.data = object.data.pow(arg.data as u32);
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<u32>>() {
+                            object.data = object.data.pow(arg.data as u32);
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<u16>>() {
+                            object.data = object.data.pow(arg.data as u32);
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<u8>>() {
+                            object.data = object.data.pow(arg.data as u32);
+                        } else if let Some(arg) = arg_mut.downcast_mut::<crate::object::primitive::PrimitiveObject<f64>>() {
+                            arg.data = (object.data as f64).powf(arg.data);
+                            drop(arg_mut);
+                            context.pop();
+                            return Ok(Some(original_arg));
+                        } else if let Some(arg) = arg_mut.downcast_mut::<crate::object::primitive::PrimitiveObject<f32>>() {
+                            arg.data = (object.data as f32).powf(arg.data);
+                            drop(arg_mut);
+                            context.pop();
+                            return Ok(Some(original_arg));
+                        } else {
+                            return Err(Fault::InvalidType);
+                        }
+                    }
+                    _ => {
+                        return Err(Fault::InvalidType);
+                    }
+                }
+            }
+            Ok(None)
+        }
+
+        fn $is_zero(object: ObjectBox, _: &mut crate::object::ContextData) -> Result<Option<ObjectBox>, Fault> {
+            let object = object.borrow();
+            if let Some(object) = object.downcast_ref::<crate::object::primitive::PrimitiveObject<$type>>() {
+                if object.data.is_zero() {
+                    return Ok(Some(crate::object::create_boolean(true)));
+                } else {
+                    return Ok(Some(crate::object::create_boolean(false)));
+                }
+            } else {
+                return Err(Fault::InvalidType)
+            }
         }
     };
 }
