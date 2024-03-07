@@ -348,8 +348,23 @@ impl VTable {
     pub fn insert(&mut self, index: String, method: Arc<Method>) {
         self.table.insert(index, method);
     }
+    pub fn empty(&self) -> bool {
+        self.table.is_empty()
+    }
 }
 
+impl crate::vm::binary::ToBinary for VTable {
+    fn to_binary(&self, string_table: Option<&mut crate::vm::binary::StringTable>) -> Vec<u8> {
+        let mut output = Vec::new(); 
+        let string_table = string_table.expect("VTable::to_binary called without a StringTable");
+        for (name, method) in self.table.iter() {
+            let idx = string_table.add_string(name.clone());
+            output.extend_from_slice(idx.to_binary(None).as_slice());
+            method.to_binary(None);
+        }
+        output
+    }
+}
 
 
 /*#[derive(Clone)]
@@ -399,6 +414,27 @@ impl Class {
     }
 }
 
+impl crate::vm::binary::ToBinary for Class {
+    fn to_binary(&self, string_table: Option<&mut crate::vm::binary::StringTable>) -> Vec<u8> {
+        let mut output = Vec::new(); 
+        let string_table = string_table.expect("Class::to_binary called without a StringTable");
+        if let Some(parent) = &self.parent {
+            output.extend_from_slice(&[0x01]);
+            output.extend_from_slice(parent.as_bytes());
+        } else {
+            output.extend_from_slice(&[0x00]);
+        }
+        self.methods.to_binary(Some(string_table));
+
+        output.extend_from_slice(self.overrides.len().to_binary(None).as_slice());
+        for (i, override_) in self.overrides.iter().enumerate().rev() {
+            override_.to_binary(Some(string_table));
+        }
+
+        output
+    }
+}
+
 
 unsafe impl Send for Method {}
 unsafe impl Sync for Method {}
@@ -410,6 +446,26 @@ pub enum Method {
     BytecodeMethod {
         block: ObjectBox,
     },
+}
+
+impl crate::vm::binary::ToBinary for Method {
+    fn to_binary(&self, string_table: Option<&mut crate::vm::binary::StringTable>) -> Vec<u8> {
+        let mut output = Vec::new(); 
+        match self {
+            Method::RustMethod { fun: _ } => {
+                panic!("Cannot convert a RustMethod to binary");
+            },
+            Method::BytecodeMethod { block } => {
+                let block = block.borrow();
+                let bytecode = block.downcast_ref::<block::Block>().unwrap().bytecode.clone();
+                output.extend_from_slice(bytecode.len().to_binary(None).as_slice());
+                for byte in bytecode.iter() {
+                    output.extend_from_slice(byte.to_binary(None).as_slice());
+                }
+            }
+        }
+        output
+    }
 }
 
 impl std::fmt::Debug for Method {

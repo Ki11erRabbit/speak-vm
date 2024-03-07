@@ -1,6 +1,8 @@
-use crate::object::{ContextData, ObjectBox, Object, Method};
+use crate::object::{ContextData, Method, Nil, Object, ObjectBox};
 use crate::object::block::Block;
 use crate::vm::bytecode::{ByteCode, SpecialInstruction};
+
+use super::bytecode::Literal;
 
 
 pub struct Interpreter {
@@ -38,8 +40,24 @@ impl Interpreter {
         context.push(value);
     }
 
-    fn push_literal(context: &mut ContextData, literal: ObjectBox) {
-        context.push(literal);
+    fn push_literal(context: &mut ContextData, literal: Literal) {
+        let object = match literal {
+            Literal::String(string) => crate::object::create_string(string),
+            Literal::I8(i) => crate::object::create_i8(i),
+            Literal::I16(i) => crate::object::create_i16(i),
+            Literal::I32(i) => crate::object::create_i32(i),
+            Literal::I64(i) => crate::object::create_i64(i),
+            Literal::U8(i) => crate::object::create_u8(i),
+            Literal::U16(i) => crate::object::create_u16(i),
+            Literal::U32(i) => crate::object::create_u32(i),
+            Literal::U64(i) => crate::object::create_u64(i),
+            Literal::F32(f) => crate::object::create_f32(f),
+            Literal::F64(f) => crate::object::create_f64(f),
+            Literal::Boolean(b) => crate::object::create_boolean(b),
+            Literal::Nil => Nil::new(),
+            Literal::ByteCode(bytecode) => crate::object::create_block(bytecode),
+        };
+        context.push(object);
     }
 
     fn store_field(context: &mut ContextData, index: usize) {
