@@ -4,7 +4,7 @@ pub mod vm;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use object::{create_i64, create_string, init_stack, Class, ContextData, Method};
+use object::{init_stack, Class, ContextData, Method};
 use vm::bytecode::Literal;
 
 use crate::vm::bytecode::ByteCode;

@@ -228,7 +228,7 @@ fn parse_special_instruction(input: &[u8]) -> IResult<&[u8], ProtoSpecialInstruc
     }
 }
 
-struct ProtoBinary {
+pub struct ProtoBinary {
     class_table: ProtoClassTable,
     string_table: StringTable,
     block_table: ProtoBlockTable,
@@ -241,9 +241,20 @@ impl ProtoBinary {
         let string_table = RefCell::new(self.string_table);
         Binary { class_table, string_table, block_table }
     }
+
+    pub fn to_binary(self) -> Vec<u8> {
+        let mut binary = vec![];
+        binary.extend_from_slice(&[0x53, 0,50, 0x4b]); // SPK
+        binary.extend_from_slice(&[0,0,1]); // version
+        binary.extend(self.class_table.to_binary(None));
+        binary.extend(self.string_table.to_binary(None));
+        binary.extend(self.block_table.to_binary(None));
+        binary
+    }
 }
 
-struct ProtoClassTable {
+
+pub struct ProtoClassTable {
     classes: Vec<(usize, ProtoClass)>,
 }
 
@@ -256,8 +267,19 @@ impl ProtoClassTable {
         ClassTable { classes }
     }
 }
+impl ToBinary for ProtoClassTable {
+    fn to_binary(&self, _: Option<&mut StringTable>) -> Vec<u8> {
+        let mut binary = vec![];
+        binary.extend_from_slice(self.classes.len().to_binary(None).as_slice());
+        for (idx, class) in self.classes.iter() {
+            binary.extend_from_slice(idx.to_binary(None).as_slice());
+            binary.extend_from_slice(class.to_binary(None).as_slice());
+        }
+        binary
+    }
+}
 
-struct ProtoClass {
+pub struct ProtoClass {
     parent: Option<usize>,
     methods: Vec<(usize, Vec<ProtoByteCode>)>,
     overrides: Vec<(usize, Vec<(usize, Vec<ProtoByteCode>)>)>,
@@ -296,7 +318,41 @@ impl ProtoClass {
     }
 }
 
-struct ProtoBlockTable {
+impl ToBinary for ProtoClass {
+    fn to_binary(&self, _: Option<&mut StringTable>) -> Vec<u8> {
+        let mut binary = vec![];
+        if let Some(parent) = self.parent {
+            binary.extend_from_slice(&[1]);
+            binary.extend_from_slice(parent.to_binary(None).as_slice());
+        } else {
+            binary.extend_from_slice(&[0]);
+        }
+        binary.extend_from_slice(self.methods.len().to_binary(None).as_slice());
+        for (idx, bytecode) in &self.methods {
+            binary.extend_from_slice(idx.to_binary(None).as_slice());
+            binary.extend_from_slice(bytecode.len().to_binary(None).as_slice());
+            for byte in bytecode.iter() {
+            binary.extend_from_slice(byte.to_binary(None).as_slice());
+            }
+        }
+        binary.extend_from_slice(self.overrides.len().to_binary(None).as_slice());
+        for (depth, methods) in &self.overrides {
+            binary.extend_from_slice(methods.len().to_binary(None).as_slice());
+            binary.extend_from_slice(depth.to_binary(None).as_slice());
+            for (idx, bytecode) in methods {
+                binary.extend_from_slice(idx.to_binary(None).as_slice());
+                binary.extend_from_slice(bytecode.len().to_binary(None).as_slice());
+                for byte in bytecode.iter() {
+                    binary.extend_from_slice(byte.to_binary(None).as_slice());
+                }
+            }
+        }
+        binary
+
+    }
+}
+
+pub struct ProtoBlockTable {
     blocks: BTreeMap<usize, Vec<ProtoByteCode>>,
 }
 
@@ -311,7 +367,23 @@ impl ProtoBlockTable {
     }
 }
 
-enum ProtoByteCode {
+impl ToBinary for ProtoBlockTable {
+    fn to_binary(&self, string_table: Option<&mut StringTable>) -> Vec<u8> {
+        let string_table = string_table.expect("ProtoBlockTable::to_binary called without a StringTable");
+        let mut binary = vec![];
+        binary.extend_from_slice(self.blocks.len().to_binary(None).as_slice());
+        for (idx, block) in self.blocks.iter() {
+            binary.extend_from_slice(idx.to_binary(None).as_slice());
+            binary.extend_from_slice(block.len().to_binary(None).as_slice());
+            for byte in block.iter() {
+                binary.extend_from_slice(byte.to_binary(Some(string_table)).as_slice());
+            }
+        }
+        binary
+    }
+}
+
+pub enum ProtoByteCode {
     Halt,
     NoOp,
     AccessField(usize),
@@ -342,8 +414,57 @@ impl ProtoByteCode {
         }
     }
 }
+
+impl ToBinary for ProtoByteCode {
+    fn to_binary(&self, _: Option<&mut StringTable>) -> Vec<u8> {
+        let mut binary = vec![];
+        match self {
+            ProtoByteCode::Halt => binary.push(0),
+            ProtoByteCode::NoOp => binary.push(1),
+            ProtoByteCode::AccessField(idx) => {
+                binary.push(2);
+                binary.extend_from_slice(idx.to_binary(None).as_slice());
+            }
+            ProtoByteCode::AccessTemp(idx) => {
+                binary.push(3);
+                binary.extend_from_slice(idx.to_binary(None).as_slice());
+            }
+            ProtoByteCode::PushLiteral(lit) => {
+                binary.push(4);
+                binary.extend_from_slice(lit.to_binary(None).as_slice());
+            }
+            ProtoByteCode::AccessClass(idx) => {
+                binary.push(5);
+                binary.extend_from_slice(idx.to_binary(None).as_slice());
+            }
+            ProtoByteCode::StoreField(idx) => {
+                binary.push(6);
+                binary.extend_from_slice(idx.to_binary(None).as_slice());
+            }
+            ProtoByteCode::StoreTemp(idx) => {
+                binary.push(7);
+                binary.extend_from_slice(idx.to_binary(None).as_slice());
+            }
+            ProtoByteCode::SendMsg(arg, msg) => {
+                binary.push(8);
+                binary.extend_from_slice(arg.to_binary(None).as_slice());
+                binary.extend_from_slice(msg.to_binary(None).as_slice());
+            }
+            ProtoByteCode::SendSuperMsg(arg, msg) => {
+                binary.push(9);
+                binary.extend_from_slice(arg.to_binary(None).as_slice());
+                binary.extend_from_slice(msg.to_binary(None).as_slice());
+            }
+            ProtoByteCode::SpecialInstruction(inst) => {
+                binary.push(10);
+                binary.extend_from_slice(inst.to_binary(None).as_slice());
+            }
+        }
+        binary
+    }
+}
    
-enum ProtoSpecialInstruction {
+pub enum ProtoSpecialInstruction {
     DupStack,
     DiscardStack,
     ReturnStack,
@@ -359,8 +480,18 @@ impl Into<crate::vm::bytecode::SpecialInstruction> for ProtoSpecialInstruction {
     }
 }
 
+impl ToBinary for ProtoSpecialInstruction {
+    fn to_binary(&self, _: Option<&mut StringTable>) -> Vec<u8> {
+        match self {
+            ProtoSpecialInstruction::DupStack => vec![0],
+            ProtoSpecialInstruction::DiscardStack => vec![1],
+            ProtoSpecialInstruction::ReturnStack => vec![2],
+        }
+    }
+}
 
-enum ProtoLiteral {
+
+pub enum ProtoLiteral {
     String(usize),
     I8(i8),
     U8(u8),
@@ -398,6 +529,71 @@ impl ProtoLiteral {
     }
 }
 
+impl ToBinary for ProtoLiteral {
+    fn to_binary(&self, string_table: Option<&mut StringTable>) -> Vec<u8> {
+        let mut binary = vec![];
+        match self {
+            ProtoLiteral::String(idx) => {
+                binary.push(0);
+                binary.extend_from_slice(idx.to_binary(None).as_slice());
+            }
+            ProtoLiteral::I8(byte) => {
+                binary.push(1);
+                binary.extend_from_slice(byte.to_le_bytes().to_vec().as_slice());
+            }
+            ProtoLiteral::U8(byte) => {
+                binary.push(2);
+                binary.extend_from_slice(byte.to_le_bytes().to_vec().as_slice());
+            }
+            ProtoLiteral::I16(byte) => {
+                binary.push(3);
+                binary.extend_from_slice(byte.to_le_bytes().to_vec().as_slice());
+            }
+            ProtoLiteral::U16(byte) => {
+                binary.push(4);
+                binary.extend_from_slice(byte.to_le_bytes().to_vec().as_slice());
+            }
+            ProtoLiteral::I32(byte) => {
+                binary.push(5);
+                binary.extend_from_slice(byte.to_le_bytes().to_vec().as_slice());
+            }
+            ProtoLiteral::U32(byte) => {
+                binary.push(6);
+                binary.extend_from_slice(byte.to_le_bytes().to_vec().as_slice());
+            }
+            ProtoLiteral::I64(byte) => {
+                binary.push(7);
+                binary.extend_from_slice(byte.to_le_bytes().to_vec().as_slice());
+            }
+            ProtoLiteral::U64(byte) => {
+                binary.push(8);
+                binary.extend_from_slice(byte.to_le_bytes().to_vec().as_slice());
+            }
+            ProtoLiteral::F32(byte) => {
+                binary.push(9);
+                binary.extend_from_slice(byte.to_le_bytes().to_vec().as_slice());
+            }
+            ProtoLiteral::F64(byte) => {
+                binary.push(10);
+                binary.extend_from_slice(byte.to_le_bytes().to_vec().as_slice());
+            }
+            ProtoLiteral::Boolean(byte) => {
+                binary.push(11);
+                match byte {
+                    true => binary.push(1),
+                    false => binary.push(0),
+                }
+            }
+            ProtoLiteral::Nil => binary.push(12),
+            ProtoLiteral::ByteCode(byte) => {
+                binary.push(13);
+                binary.extend_from_slice(byte.to_binary(None).as_slice());
+            }
+        }
+        binary
+    }
+}
+
 pub struct Binary {
     class_table: ClassTable,
     string_table: RefCell<StringTable>,
@@ -426,6 +622,12 @@ pub struct ClassTable {
     classes: HashMap<String, Class>,
 }
 
+impl ClassTable {
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &Class)> {
+        self.classes.iter()
+    }
+}
+
 impl ToBinary for ClassTable {
     fn to_binary(&self, string_table: Option<&mut StringTable>) -> Vec<u8> {
         let mut binary = vec![];
@@ -439,6 +641,7 @@ impl ToBinary for ClassTable {
         binary
     }
 }
+
 
 pub struct StringTable {
     strings: BTreeMap<usize, String>,
