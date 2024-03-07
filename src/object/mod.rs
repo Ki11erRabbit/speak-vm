@@ -30,8 +30,23 @@ pub enum Fault {
     InvalidType,
     DivideByZero,
     IO(std::io::Error),
+    MethodNotFound(String),
 }
 
+impl std::fmt::Display for Fault {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Fault::NotImplemented => write!(f, "Not implemented"),
+            Fault::InvalidOperation => write!(f, "Invalid operation"),
+            Fault::InvalidType => write!(f, "Invalid type"),
+            Fault::DivideByZero => write!(f, "Divide by zero"),
+            Fault::IO(e) => write!(f, "IO error: {}", e),
+            Fault::MethodNotFound(name) => write!(f, "Method not found: {}", name),
+        }
+    }
+}
+
+impl std::error::Error for Fault {}
 
 pub type ObjectBox = Rc<RefCell<dyn Object>>;
 

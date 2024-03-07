@@ -20,7 +20,8 @@ use nom::{character, number, IResult, Parser, error::Error, multi, bytes, Finish
 use crate::object::{Class, Method, VTable};
 use crate::vm::bytecode::ByteCode;
 
-pub fn binary_data_to_binary(input: &[u8]) -> Result<Binary,Error<&[u8]>> {
+
+pub fn binary_data_to_binary<'a>(input: &'a [u8]) -> Result<Binary,Error<&[u8]>> {
     let binary = parse_binary(input).finish();
     match binary {
         Ok((_, binary)) => Ok(binary.into_binary()),
@@ -595,7 +596,7 @@ impl ToBinary for ProtoLiteral {
 }
 
 pub struct Binary {
-    class_table: ClassTable,
+    pub class_table: ClassTable,
     string_table: RefCell<StringTable>,
     block_table: BlockTable,
 }
@@ -609,6 +610,13 @@ impl Binary {
         binary.extend(self.string_table.borrow().to_binary(None));
         binary.extend(self.block_table.to_binary(Some(&mut self.string_table.borrow_mut())));
         binary
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &Class)> {
+        self.class_table.iter()
+    }
+    pub fn into_iter(self) -> impl Iterator<Item = (String, Class)> {
+        self.class_table.classes.into_iter()
     }
 }
 

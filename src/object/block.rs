@@ -71,7 +71,7 @@ fn value(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBo
     let object = object.borrow();
     let object = object.downcast_ref::<Block>().expect("Expected block");
     for code in object.bytecode.iter() {
-        Interpreter::run(context, code.clone());
+        Interpreter::run(context, code)?;
     }
     Ok(None)
 }

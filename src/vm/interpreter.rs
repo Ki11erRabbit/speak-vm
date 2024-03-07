@@ -1,4 +1,4 @@
-use crate::object::{ContextData, Method, Nil, Object, ObjectBox};
+use crate::object::{ContextData, Fault, Method, Nil};
 use crate::object::block::Block;
 use crate::vm::bytecode::{ByteCode, SpecialInstruction};
 
@@ -10,21 +10,21 @@ pub struct Interpreter {
 
 impl Interpreter {
 
-    pub fn run(context: &mut ContextData, bytecode: ByteCode) -> bool {
+    pub fn run(context: &mut ContextData, bytecode: &ByteCode) -> Result<bool, Fault> {
         match bytecode {
-            ByteCode::Halt => return false,
+            ByteCode::Halt => return Ok(false),
             ByteCode::NoOp => {}
-            ByteCode::AccessField(index) => Self::access_field(context, index),
-            ByteCode::AccessTemp(index) => Self::access_temp(index, context),
+            ByteCode::AccessField(index) => Self::access_field(context, *index),
+            ByteCode::AccessTemp(index) => Self::access_temp(*index, context),
             ByteCode::PushLiteral(literal) => Self::push_literal(context, literal),
-            ByteCode::StoreField(index) => Self::store_field(context, index),
-            ByteCode::StoreTemp(index) => Self::store_temp(index, context),
-            ByteCode::SendMsg(arg, msg_index) => Self::send_msg(arg, msg_index, context),
-            ByteCode::SendSuperMsg(arg, msg_index) => Self::send_super_msg(arg, msg_index, context),
+            ByteCode::StoreField(index) => Self::store_field(context, *index),
+            ByteCode::StoreTemp(index) => Self::store_temp(*index, context),
+            ByteCode::SendMsg(arg, msg_index) => Self::send_msg(*arg, msg_index, context)?,
+            ByteCode::SendSuperMsg(arg, msg_index) => Self::send_super_msg(*arg, msg_index, context)?,
             ByteCode::SpecialInstruction(instruction) => return Self::special_instruction(context, instruction),
             _ => unimplemented!()
         }
-        true
+        Ok(true)
     }
 
     fn access_field(context: &mut ContextData, index: usize) {
@@ -40,22 +40,22 @@ impl Interpreter {
         context.push(value);
     }
 
-    fn push_literal(context: &mut ContextData, literal: Literal) {
+    fn push_literal(context: &mut ContextData, literal: &Literal) {
         let object = match literal {
-            Literal::String(string) => crate::object::create_string(string),
-            Literal::I8(i) => crate::object::create_i8(i),
-            Literal::I16(i) => crate::object::create_i16(i),
-            Literal::I32(i) => crate::object::create_i32(i),
-            Literal::I64(i) => crate::object::create_i64(i),
-            Literal::U8(i) => crate::object::create_u8(i),
-            Literal::U16(i) => crate::object::create_u16(i),
-            Literal::U32(i) => crate::object::create_u32(i),
-            Literal::U64(i) => crate::object::create_u64(i),
-            Literal::F32(f) => crate::object::create_f32(f),
-            Literal::F64(f) => crate::object::create_f64(f),
-            Literal::Boolean(b) => crate::object::create_boolean(b),
+            Literal::String(string) => crate::object::create_string(string.to_string()),
+            Literal::I8(i) => crate::object::create_i8(*i),
+            Literal::I16(i) => crate::object::create_i16(*i),
+            Literal::I32(i) => crate::object::create_i32(*i),
+            Literal::I64(i) => crate::object::create_i64(*i),
+            Literal::U8(i) => crate::object::create_u8(*i),
+            Literal::U16(i) => crate::object::create_u16(*i),
+            Literal::U32(i) => crate::object::create_u32(*i),
+            Literal::U64(i) => crate::object::create_u64(*i),
+            Literal::F32(f) => crate::object::create_f32(*f),
+            Literal::F64(f) => crate::object::create_f64(*f),
+            Literal::Boolean(b) => crate::object::create_boolean(*b),
             Literal::Nil => Nil::new(),
-            Literal::ByteCode(bytecode) => crate::object::create_block(bytecode),
+            Literal::ByteCode(bytecode) => crate::object::create_block(bytecode.to_vec()),
         };
         context.push(object);
     }
@@ -73,7 +73,7 @@ impl Interpreter {
         context.set_argument(index, value);
     }
 
-    fn send_msg(arg: usize, msg_index: String, context: &mut ContextData) {
+    fn send_msg(arg: usize, msg_index: &str, context: &mut ContextData) -> Result<(), Fault>{
         for i in 0..arg {
             let value = context.pop().expect("Expected argument");
             context.set_argument(i, value)
@@ -101,18 +101,19 @@ impl Interpreter {
                     let object = block.borrow();
                     let object = object.downcast_ref::<Block>().expect("Expected block");
                     for code in object.bytecode.iter() {
-                        Self::run(context, code.clone());
+                        Self::run(context, code);
                     }
                     context.pop_frame();
 
                 }
             }
         } else {
-            unimplemented!("No error handling for missing methods yet.")
+            return Err(Fault::MethodNotFound(msg_index.to_string()));
         }
+        Ok(())
     }
 
-    fn send_super_msg(arg: usize, msg_index: String, context: &mut ContextData) {
+    fn send_super_msg(arg: usize, msg_index: &str, context: &mut ContextData) -> Result<(), Fault> {
         for i in 0..arg {
             let value = context.pop().expect("Expected argument");
             context.set_argument(i, value)
@@ -143,17 +144,18 @@ impl Interpreter {
                     let object = block.borrow();
                     let object = object.downcast_ref::<Block>().expect("Expected block");
                     for code in object.bytecode.iter() {
-                        Self::run(context, code.clone());
+                        Self::run(context, code);
                     }
                     context.pop_frame();
                 }
             }
         } else {
-            unimplemented!("No error handling for missing methods yet.")
+            return Err(Fault::MethodNotFound(msg_index.to_string()));
         }
+        Ok(())
     }
     
-    fn special_instruction(context: &mut ContextData, instruction: SpecialInstruction) -> bool {
+    fn special_instruction(context: &mut ContextData, instruction: &SpecialInstruction) -> Result<bool, Fault> {
         match instruction {
             SpecialInstruction::DupStack => Self::dup_stack(context),
             SpecialInstruction::DiscardStack => Self::discard_stack(context),
@@ -161,26 +163,27 @@ impl Interpreter {
         }
     }
     
-    fn dup_stack(context: &mut ContextData) -> bool {
+    fn dup_stack(context: &mut ContextData) -> Result<bool, Fault> {
         let value = context.top().expect("Expected value").clone();
          
         let object = crate::object::object_clone(value);
 
         context.push(object);
-        true
+        Ok(true)
     }
 
-    fn discard_stack(context: &mut ContextData) -> bool {
+    fn discard_stack(context: &mut ContextData) -> Result<bool, Fault> {
         context.pop();
-        true
+        Ok(true)
     }
 
-    fn return_stack(context: &mut ContextData) -> bool {
+    fn return_stack(context: &mut ContextData) -> Result<bool, Fault> {
         let value = context.pop().expect("Expected value").clone();
         let frame = context.pop_frame();
         context.push(value);
         context.push_frame(frame);
-        false
+        Ok(false)
     }
+
 
 }

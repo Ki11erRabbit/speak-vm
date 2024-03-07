@@ -9,8 +9,31 @@ use vm::bytecode::Literal;
 
 use crate::vm::bytecode::ByteCode;
 use crate::vm::interpreter::Interpreter;
+use clap::Parser;
 
-fn main() {
+
+#[derive(Parser, Debug)]
+struct Args {
+    object_files: Vec<String>,
+}
+
+fn load_object_file(file: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let data = std::fs::read(file)?;
+    let binary = vm::create_binary(data.as_slice()).map_err(|e| format!("Error loading object file: {:?}", e))?;
+    for (name, class) in binary.into_iter() {
+        object::add_class(&name, class)
+    }
+    Ok(())
+}
+
+
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    
+    let args = Args::parse();
+    for file in args.object_files {
+        load_object_file(&file)?;
+    }
     let mut context = ContextData::new(init_stack());
 
     //let x = create_i64(8);
@@ -53,7 +76,7 @@ fn main() {
 
 
     for instruction in instructions {
-        match Interpreter::run(&mut context, instruction.clone()) {
+        match Interpreter::run(&mut context, &instruction)? {
             false => {
                 println!("Halted");
             }
@@ -63,6 +86,6 @@ fn main() {
 
 
 
-
+    Ok(())
 
 }
