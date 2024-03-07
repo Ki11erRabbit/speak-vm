@@ -6,7 +6,7 @@ use crate::object::ContextData;
 use std::sync::Arc;
 use super::Fault;
 use num_traits::Zero;
-use crate::create_type_ops;
+use crate::{create_type_ops, primitive_base_ops};
 use crate::object::primitive::PrimitiveObject;
 use num_integer::Integer;
 use crate::object::create_boolean;
@@ -327,6 +327,13 @@ impl I64Object {
         let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
         return out as ObjectBox;
     }
+    pub fn make_object_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("equals"), Arc::new(Method::RustMethod { fun: Box::new(i64_equals) }));
+        methods.insert(String::from("to_string"), Arc::new(Method::RustMethod { fun: Box::new(i64_to_string) }));
+        methods.insert(String::from("order"), Arc::new(Method::RustMethod { fun: Box::new(i64_order) }));
+        return VTable::new(methods);
+    }
     pub fn make_number_vtable() -> VTable {
         let mut methods = HashMap::new();
         methods.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(i64_add) }));
@@ -376,6 +383,7 @@ impl Object for PrimitiveObject<i64> {
         integer
     }
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
+        let object_vtable = I64Object::make_object_vtable();
         let number_vtable = I64Object::make_number_vtable();
         let integer_vtable = I64Object::make_integer_vtable();
 
@@ -385,12 +393,16 @@ impl Object for PrimitiveObject<i64> {
         let number_object = integer_object.get_super_object().unwrap().clone();
         let mut number_object = number_object.borrow_mut();
         number_object.initialize(Vec::new(), number_vtable);
+        let object_object = number_object.get_super_object().unwrap().clone();
+        let mut object_object = object_object.borrow_mut();
+        object_object.initialize(Vec::new(), object_vtable);
         self.vtable.extend(vtable);
     }
 }
 
 create_type_ops!(i64, i64_add, i64_sub, i64_mul, i64_div, i64_mod, i64_abs, i64_pow, i64_is_zero);
 create_integer_ops!(i64, i64_divides, i64_shr, i64_shl, i64_and, i64_or, i64_xor);
+primitive_base_ops!(i64, i64_equals, i64_to_string, i64_order);
 
 pub struct U64Object {
 }
@@ -399,6 +411,13 @@ impl U64Object {
     pub fn make_object(parent: ObjectBox, data: u64) -> ObjectBox {
         let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
         return out as ObjectBox;
+    }
+    pub fn make_object_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("equals"), Arc::new(Method::RustMethod { fun: Box::new(u64_equals) }));
+        methods.insert(String::from("to_string"), Arc::new(Method::RustMethod { fun: Box::new(u64_to_string) }));
+        methods.insert(String::from("order"), Arc::new(Method::RustMethod { fun: Box::new(u64_order) }));
+        return VTable::new(methods);
     }
     pub fn make_number_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -449,6 +468,7 @@ impl Object for PrimitiveObject<u64> {
         integer
     }
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
+        let object_vtable = U64Object::make_object_vtable();
         let number_vtable = U64Object::make_number_vtable();
         let integer_vtable = U64Object::make_integer_vtable();
 
@@ -458,12 +478,16 @@ impl Object for PrimitiveObject<u64> {
         let number_object = integer_object.get_super_object().unwrap().clone();
         let mut number_object = number_object.borrow_mut();
         number_object.initialize(Vec::new(), number_vtable);
+        let object_object = number_object.get_super_object().unwrap().clone();
+        let mut object_object = object_object.borrow_mut();
+        object_object.initialize(Vec::new(), object_vtable);
         self.vtable.extend(vtable);
     }
 }
 
 create_type_ops!(u64, u64_add, u64_sub, u64_mul, u64_div, u64_mod, u64_abs, u64_pow, u64_is_zero);
 create_integer_ops!(u64, u64_divides, u64_shr, u64_shl, u64_and, u64_or, u64_xor);
+primitive_base_ops!(u64, u64_equals, u64_to_string, u64_order);
 
 pub struct I32Object {
 }
@@ -472,6 +496,13 @@ impl I32Object {
     pub fn make_object(parent: ObjectBox, data: i32) -> ObjectBox {
         let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
         return out as ObjectBox;
+    }
+    pub fn make_object_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("equals"), Arc::new(Method::RustMethod { fun: Box::new(i32_equals) }));
+        methods.insert(String::from("to_string"), Arc::new(Method::RustMethod { fun: Box::new(i32_to_string) }));
+        methods.insert(String::from("order"), Arc::new(Method::RustMethod { fun: Box::new(i32_order) }));
+        return VTable::new(methods);
     }
     pub fn make_number_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -522,6 +553,7 @@ impl Object for PrimitiveObject<i32> {
         integer
     }
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
+        let object_vtable = I32Object::make_object_vtable();
         let number_vtable = I32Object::make_number_vtable();
         let integer_vtable = I32Object::make_integer_vtable();
 
@@ -531,12 +563,16 @@ impl Object for PrimitiveObject<i32> {
         let number_object = integer_object.get_super_object().unwrap().clone();
         let mut number_object = number_object.borrow_mut();
         number_object.initialize(Vec::new(), number_vtable);
+        let object_object = number_object.get_super_object().unwrap().clone();
+        let mut object_object = object_object.borrow_mut();
+        object_object.initialize(Vec::new(), object_vtable);
         self.vtable.extend(vtable);
     }
 }
 
 create_type_ops!(i32, i32_add, i32_sub, i32_mul, i32_div, i32_mod, i32_abs, i32_pow, i32_is_zero);
 create_integer_ops!(i32, i32_divides, i32_shr, i32_shl, i32_and, i32_or, i32_xor);
+primitive_base_ops!(i32, i32_equals, i32_to_string, i32_order);
 
 pub struct U32Object {
 }
@@ -545,6 +581,13 @@ impl U32Object {
     pub fn make_object(parent: ObjectBox, data: u32) -> ObjectBox {
         let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
         return out as ObjectBox;
+    }
+    pub fn make_object_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("equals"), Arc::new(Method::RustMethod { fun: Box::new(u32_equals) }));
+        methods.insert(String::from("to_string"), Arc::new(Method::RustMethod { fun: Box::new(u32_to_string) }));
+        methods.insert(String::from("order"), Arc::new(Method::RustMethod { fun: Box::new(u32_order) }));
+        return VTable::new(methods);
     }
     pub fn make_number_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -595,6 +638,7 @@ impl Object for PrimitiveObject<u32> {
         integer
     }
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
+        let object_vtable = U32Object::make_object_vtable();
         let number_vtable = U32Object::make_number_vtable();
         let integer_vtable = U32Object::make_integer_vtable();
 
@@ -604,12 +648,16 @@ impl Object for PrimitiveObject<u32> {
         let number_object = integer_object.get_super_object().unwrap().clone();
         let mut number_object = number_object.borrow_mut();
         number_object.initialize(Vec::new(), number_vtable);
+        let object_object = number_object.get_super_object().unwrap().clone();
+        let mut object_object = object_object.borrow_mut();
+        object_object.initialize(Vec::new(), object_vtable);
         self.vtable.extend(vtable);
     }
 }
 
 create_type_ops!(u32, u32_add, u32_sub, u32_mul, u32_div, u32_mod, u32_abs, u32_pow, u32_is_zero);
 create_integer_ops!(u32, u32_divides, u32_shr, u32_shl, u32_and, u32_or, u32_xor);
+primitive_base_ops!(u32, u32_equals, u32_to_string, u32_order);
 
 pub struct I16Object {
 }
@@ -618,6 +666,13 @@ impl I16Object {
     pub fn make_object(parent: ObjectBox, data: i16) -> ObjectBox {
         let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
         return out as ObjectBox;
+    }
+    pub fn make_object_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("equals"), Arc::new(Method::RustMethod { fun: Box::new(i16_equals) }));
+        methods.insert(String::from("to_string"), Arc::new(Method::RustMethod { fun: Box::new(i16_to_string) }));
+        methods.insert(String::from("order"), Arc::new(Method::RustMethod { fun: Box::new(i16_order) }));
+        return VTable::new(methods);
     }
     pub fn make_number_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -668,6 +723,7 @@ impl Object for PrimitiveObject<i16> {
         integer
     }
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
+        let object_vtable = I16Object::make_object_vtable();
         let number_vtable = I16Object::make_number_vtable();
         let integer_vtable = I16Object::make_integer_vtable();
 
@@ -677,13 +733,16 @@ impl Object for PrimitiveObject<i16> {
         let number_object = integer_object.get_super_object().unwrap().clone();
         let mut number_object = number_object.borrow_mut();
         number_object.initialize(Vec::new(), number_vtable);
+        let object_object = number_object.get_super_object().unwrap().clone();
+        let mut object_object = object_object.borrow_mut();
+        object_object.initialize(Vec::new(), object_vtable);
         self.vtable.extend(vtable);
     }
 }
 
 create_type_ops!(i16, i16_add, i16_sub, i16_mul, i16_div, i16_mod, i16_abs, i16_pow, i16_is_zero);
 create_integer_ops!(i16, i16_divides, i16_shr, i16_shl, i16_and, i16_or, i16_xor);
-
+primitive_base_ops!(i16, i16_equals, i16_to_string, i16_order);
 
 pub struct U16Object {
 }
@@ -692,6 +751,13 @@ impl U16Object {
     pub fn make_object(parent: ObjectBox, data: u16) -> ObjectBox {
         let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
         return out as ObjectBox;
+    }
+    pub fn make_object_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("equals"), Arc::new(Method::RustMethod { fun: Box::new(u16_equals) }));
+        methods.insert(String::from("to_string"), Arc::new(Method::RustMethod { fun: Box::new(u16_to_string) }));
+        methods.insert(String::from("order"), Arc::new(Method::RustMethod { fun: Box::new(u16_order) }));
+        return VTable::new(methods);
     }
     pub fn make_number_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -742,6 +808,7 @@ impl Object for PrimitiveObject<u16> {
         integer
     }
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
+        let object_vtable = U16Object::make_object_vtable();
         let number_vtable = U16Object::make_number_vtable();
         let integer_vtable = U16Object::make_integer_vtable();
 
@@ -751,12 +818,16 @@ impl Object for PrimitiveObject<u16> {
         let number_object = integer_object.get_super_object().unwrap().clone();
         let mut number_object = number_object.borrow_mut();
         number_object.initialize(Vec::new(), number_vtable);
+        let object_object = number_object.get_super_object().unwrap().clone();
+        let mut object_object = object_object.borrow_mut();
+        object_object.initialize(Vec::new(), object_vtable);
         self.vtable.extend(vtable);
     }
 }
 
 create_type_ops!(u16, u16_add, u16_sub, u16_mul, u16_div, u16_mod, u16_abs, u16_pow, u16_is_zero);
 create_integer_ops!(u16, u16_divides, u16_shr, u16_shl, u16_and, u16_or, u16_xor);
+primitive_base_ops!(u16, u16_equals, u16_to_string, u16_order);
 
 pub struct I8Object {
 }
@@ -765,6 +836,13 @@ impl I8Object {
     pub fn make_object(parent: ObjectBox, data: i8) -> ObjectBox {
         let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
         return out as ObjectBox;
+    }
+    pub fn make_object_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("equals"), Arc::new(Method::RustMethod { fun: Box::new(i8_equals) }));
+        methods.insert(String::from("to_string"), Arc::new(Method::RustMethod { fun: Box::new(i8_to_string) }));
+        methods.insert(String::from("order"), Arc::new(Method::RustMethod { fun: Box::new(i8_order) }));
+        return VTable::new(methods);
     }
     pub fn make_number_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -815,6 +893,7 @@ impl Object for PrimitiveObject<i8> {
         integer
     }
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
+        let object_vtable = I8Object::make_object_vtable();
         let number_vtable = I8Object::make_number_vtable();
         let integer_vtable = I8Object::make_integer_vtable();
 
@@ -824,12 +903,16 @@ impl Object for PrimitiveObject<i8> {
         let number_object = integer_object.get_super_object().unwrap().clone();
         let mut number_object = number_object.borrow_mut();
         number_object.initialize(Vec::new(), number_vtable);
+        let object_object = number_object.get_super_object().unwrap().clone();
+        let mut object_object = object_object.borrow_mut();
+        object_object.initialize(Vec::new(), object_vtable);
         self.vtable.extend(vtable);
     }
 }
 
 create_type_ops!(i8, i8_add, i8_sub, i8_mul, i8_div, i8_mod, i8_abs, i8_pow, i8_is_zero);
 create_integer_ops!(i8, i8_divides, i8_shr, i8_shl, i8_and, i8_or, i8_xor);
+primitive_base_ops!(i8, i8_equals, i8_to_string, i8_order);
 
 pub struct U8Object {
 }
@@ -838,6 +921,13 @@ impl U8Object {
     pub fn make_object(parent: ObjectBox, data: u8) -> ObjectBox {
         let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
         return out as ObjectBox;
+    }
+    pub fn make_object_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("equals"), Arc::new(Method::RustMethod { fun: Box::new(u8_equals) }));
+        methods.insert(String::from("to_string"), Arc::new(Method::RustMethod { fun: Box::new(u8_to_string) }));
+        methods.insert(String::from("order"), Arc::new(Method::RustMethod { fun: Box::new(u8_order) }));
+        return VTable::new(methods);
     }
     pub fn make_number_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -888,6 +978,7 @@ impl Object for PrimitiveObject<u8> {
         integer
     }
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
+        let object_vtable = U8Object::make_object_vtable();
         let number_vtable = U8Object::make_number_vtable();
         let integer_vtable = U8Object::make_integer_vtable();
 
@@ -897,11 +988,14 @@ impl Object for PrimitiveObject<u8> {
         let number_object = integer_object.get_super_object().unwrap().clone();
         let mut number_object = number_object.borrow_mut();
         number_object.initialize(Vec::new(), number_vtable);
+        let object_object = number_object.get_super_object().unwrap().clone();
+        let mut object_object = object_object.borrow_mut();
+        object_object.initialize(Vec::new(), object_vtable);
         self.vtable.extend(vtable);
     }
 }
 
 create_type_ops!(u8, u8_add, u8_sub, u8_mul, u8_div, u8_mod, u8_abs, u8_pow, u8_is_zero);
 create_integer_ops!(u8, u8_divides, u8_shr, u8_shl, u8_and, u8_or, u8_xor);
-
+primitive_base_ops!(u8, u8_equals, u8_to_string, u8_order);
 

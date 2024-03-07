@@ -484,3 +484,197 @@ macro_rules! create_type_ops {
         }
     };
 }
+
+#[macro_export]
+macro_rules! primitive_base_ops {
+    ($type:ty, $equals:ident, $to_string:ident, $order:ident) => {
+        fn $equals(object: ObjectBox, context: &mut crate::object::ContextData) -> Result<Option<ObjectBox>, Fault> {
+            {
+                let mut object = object.borrow_mut();
+                let object = object.downcast_mut::<crate::object::primitive::PrimitiveObject<$type>>();
+                let original_arg = context.arguments[0].clone();
+                let mut arg_mut = original_arg.borrow_mut();
+                match object {
+                    Some(object) => {
+                        if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<i64>>() {
+                            if object.data == arg.data as $type {
+                                return Ok(Some(crate::object::create_boolean(true)));
+                            } else {
+                                return Ok(Some(crate::object::create_boolean(false)));
+                            }
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<i32>>() {
+                            if object.data == arg.data as $type {
+                                return Ok(Some(crate::object::create_boolean(true)));
+                            } else {
+                                return Ok(Some(crate::object::create_boolean(false)));
+                            }
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<i16>>() {
+                            if object.data == arg.data as $type {
+                                return Ok(Some(crate::object::create_boolean(true)));
+                            } else {
+                                return Ok(Some(crate::object::create_boolean(false)));
+                            }
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<i8>>() {
+                            if object.data == arg.data as $type {
+                                return Ok(Some(crate::object::create_boolean(true)));
+                            } else {
+                                return Ok(Some(crate::object::create_boolean(false)));
+                            }
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<u64>>() {
+                            if object.data == arg.data as $type {
+                                return Ok(Some(crate::object::create_boolean(true)));
+                            } else {
+                                return Ok(Some(crate::object::create_boolean(false)));
+                            }
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<u32>>() {
+                            if object.data == arg.data as $type {
+                                return Ok(Some(crate::object::create_boolean(true)));
+                            } else {
+                                return Ok(Some(crate::object::create_boolean(false)));
+                            }
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<u16>>() {
+                            if object.data == arg.data as $type {
+                                return Ok(Some(crate::object::create_boolean(true)));
+                            } else {
+                                return Ok(Some(crate::object::create_boolean(false)));
+                            }
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<u8>>() {
+                            if object.data == arg.data as $type {
+                                return Ok(Some(crate::object::create_boolean(true)));
+                            } else {
+                                return Ok(Some(crate::object::create_boolean(false)));
+                            }
+                        } else if let Some(arg) = arg_mut.downcast_mut::<crate::object::primitive::PrimitiveObject<f64>>() {
+                            if object.data as f64 == arg.data as f64 {
+                                return Ok(Some(crate::object::create_boolean(true)));
+                            } else {
+                                return Ok(Some(crate::object::create_boolean(false)));
+                            }
+                        } else if let Some(arg) = arg_mut.downcast_mut::<crate::object::primitive::PrimitiveObject<f32>>() {
+                            if object.data as f32 == arg.data as f32 {
+                                return Ok(Some(crate::object::create_boolean(true)));
+                            } else {
+                                return Ok(Some(crate::object::create_boolean(false)));
+                            }
+                        } else {
+                            return Err(Fault::InvalidType);
+                        }
+                    }
+                    _ => {
+                        return Err(Fault::InvalidType);
+                    }
+                }
+            }
+        }
+        
+        fn $to_string(object: ObjectBox, _: &mut crate::object::ContextData) -> Result<Option<ObjectBox>, Fault> {
+            let object = object.borrow();
+            if let Some(object) = object.downcast_ref::<crate::object::primitive::PrimitiveObject<$type>>() {
+                let string = object.data.to_string();
+                return Ok(Some(crate::object::create_string(string)));
+            } else {
+                return Err(Fault::InvalidType)
+            }
+        }
+
+
+        fn $order(object: ObjectBox, context: &mut crate::object::ContextData) -> Result<Option<ObjectBox>, Fault> {
+            {
+                let mut object = object.borrow_mut();
+                let object = object.downcast_mut::<crate::object::primitive::PrimitiveObject<$type>>();
+                let original_arg = context.arguments[0].clone();
+                let mut arg_mut = original_arg.borrow_mut();
+                match object {
+                    Some(object) => {
+                        if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<i64>>() {
+                            if object.data < arg.data as $type {
+                                return Ok(Some(crate::object::create_i8(-1)));
+                            } else if object.data > arg.data as $type {
+                                return Ok(Some(crate::object::create_i8(1)));
+                            } else {
+                                return Ok(Some(crate::object::create_i8(0)));
+                            }
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<i32>>() {
+                            if object.data < arg.data as $type {
+                                return Ok(Some(crate::object::create_i8(-1)));
+                            } else if object.data > arg.data as $type {
+                                return Ok(Some(crate::object::create_i8(1)));
+                            } else {
+                                return Ok(Some(crate::object::create_i8(0)));
+                            }
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<i16>>() {
+                            if object.data < arg.data as $type {
+                                return Ok(Some(crate::object::create_i8(-1)));
+                            } else if object.data > arg.data as $type {
+                                return Ok(Some(crate::object::create_i8(1)));
+                            } else {
+                                return Ok(Some(crate::object::create_i8(0)));
+                            }
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<i8>>() {
+                            if object.data < arg.data as $type {
+                                return Ok(Some(crate::object::create_i8(-1)));
+                            } else if object.data > arg.data as $type {
+                                return Ok(Some(crate::object::create_i8(1)));
+                            } else {
+                                return Ok(Some(crate::object::create_i8(0)));
+                            }
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<u64>>() {
+                            if object.data < arg.data as $type {
+                                return Ok(Some(crate::object::create_i8(-1)));
+                            } else if object.data > arg.data as $type {
+                                return Ok(Some(crate::object::create_i8(1)));
+                            } else {
+                                return Ok(Some(crate::object::create_i8(0)));
+                            }
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<u32>>() {
+                            if object.data < arg.data as $type {
+                                return Ok(Some(crate::object::create_i8(-1)));
+                            } else if object.data > arg.data as $type {
+                                return Ok(Some(crate::object::create_i8(1)));
+                            } else {
+                                return Ok(Some(crate::object::create_i8(0)));
+                            }
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<u16>>() {
+                            if object.data < arg.data as $type {
+                                return Ok(Some(crate::object::create_i8(-1)));
+                            } else if object.data > arg.data as $type {
+                                return Ok(Some(crate::object::create_i8(1)));
+                            } else {
+                                return Ok(Some(crate::object::create_i8(0)));
+                            }
+                        } else if let Some(arg) = arg_mut.downcast_ref::<crate::object::primitive::PrimitiveObject<u8>>() {
+                            if object.data < arg.data as $type {
+                                return Ok(Some(crate::object::create_i8(-1)));
+                            } else if object.data > arg.data as $type {
+                                return Ok(Some(crate::object::create_i8(1)));
+                            } else {
+                                return Ok(Some(crate::object::create_i8(0)));
+                            }
+                        } else if let Some(arg) = arg_mut.downcast_mut::<crate::object::primitive::PrimitiveObject<f64>>() {
+                            if (object.data as f64) < arg.data {
+                                return Ok(Some(crate::object::create_i8(-1)));
+                            } else if object.data > arg.data as $type {
+                                return Ok(Some(crate::object::create_i8(1)));
+                            } else {
+                                return Ok(Some(crate::object::create_i8(0)));
+                            }
+                        } else if let Some(arg) = arg_mut.downcast_mut::<crate::object::primitive::PrimitiveObject<f32>>() {
+                            if (object.data as f32) < arg.data {
+                                return Ok(Some(crate::object::create_i8(-1)));
+                            } else if object.data > arg.data as $type {
+                                return Ok(Some(crate::object::create_i8(1)));
+                            } else {
+                                return Ok(Some(crate::object::create_i8(0)));
+                            }
+                        } else {
+                            return Err(Fault::InvalidType);
+                        }
+                    }
+                    _ => {
+                        return Err(Fault::InvalidType);
+                    }
+                }
+            }
+        }
+    };
+}

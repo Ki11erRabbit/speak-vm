@@ -1,8 +1,12 @@
 use std::cell::RefCell;
+use std::sync::Arc;
 use std::{collections::HashMap, rc::Rc};
 use crate::object::{Object, ObjectBox};
 use crate::object::VTable;
 use super::PrimitiveObject;
+use crate::object::ContextData;
+use crate::object::Fault;
+use crate::object::Method;
 
 
 
@@ -17,6 +21,13 @@ pub struct BooleanObject {}
 impl BooleanObject {
     pub fn make_object(parent: ObjectBox, data: bool) -> ObjectBox {
         Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)))
+    }
+    pub fn make_object_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert("equals".to_string(), Arc::new(Method::RustMethod { fun: Box::new(boolean_equals) }));
+        methods.insert("to_string".to_string(), Arc::new(Method::RustMethod { fun: Box::new(boolean_to_string) }));
+        methods.insert("order".to_string(), Arc::new(Method::RustMethod { fun: Box::new(boolean_order) }));
+        VTable::new(methods)
     }
     pub fn make_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -52,6 +63,41 @@ impl Object for PrimitiveObject<bool> {
     }
 }
 
+
+
+fn boolean_equals(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
+    let object = object.borrow();
+    let other = context.get_argument(0).unwrap();
+    let other = other.borrow();
+    match (object.downcast_ref::<PrimitiveObject<bool>>(), other.downcast_ref::<PrimitiveObject<bool>>()) {
+        (Some(obj), Some(other)) => Ok(Some(crate::object::create_boolean(obj.data == other.data))),
+        _ => Err(Fault::InvalidType)
+    }
+}
+
+fn boolean_to_string(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
+    let object = object.borrow();
+    match object.downcast_ref::<PrimitiveObject<bool>>() {
+        Some(obj) => Ok(Some(crate::object::create_string(obj.data.to_string()))),
+        _ => Err(Fault::InvalidType)
+    }
+}
+
+fn boolean_order(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
+    let object = object.borrow();
+    let other = context.get_argument(0).unwrap();
+    let other = other.borrow();
+    match (object.downcast_ref::<PrimitiveObject<bool>>(), other.downcast_ref::<PrimitiveObject<bool>>()) {
+        (Some(obj), Some(other)) => if obj.data > other.data {
+                Ok(Some(crate::object::create_i8(1)))
+            } else if obj.data < other.data {
+                Ok(Some(crate::object::create_i8(-1)))
+            } else {
+                Ok(Some(crate::object::create_i8(0)))
+            },
+        _ => Err(Fault::InvalidType)
+    }
+}
 
 
 

@@ -5,7 +5,7 @@ use crate::object::{Object, VTable};
 use std::sync::Arc;
 use super::Fault;
 use num_traits::Zero;
-use crate::create_type_ops;
+use crate::{create_type_ops, primitive_base_ops};
 use crate::object::primitive::PrimitiveObject;
 use crate::object::ContextData;
 use crate::object::create_boolean;
@@ -314,6 +314,13 @@ impl F64Object {
         let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
         return out as ObjectBox;
     }
+    pub fn make_object_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("equals"), Arc::new(Method::RustMethod { fun: Box::new(f64_equals) }));
+        methods.insert(String::from("to_string"), Arc::new(Method::RustMethod { fun: Box::new(f64_to_string) }));
+        methods.insert(String::from("order"), Arc::new(Method::RustMethod { fun: Box::new(f64_order) }));
+        VTable::new(methods)
+    }
     pub fn make_number_vtable() -> VTable {
         let mut number_vtable = HashMap::new();
         number_vtable.insert(String::from("add"), Arc::new(Method::RustMethod { fun: Box::new(f64_add) }));
@@ -374,6 +381,7 @@ impl Object for PrimitiveObject<f64> {
         float
     }
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
+        let object_vtable = F64Object::make_object_vtable();
         let number_vtable = F64Object::make_number_vtable();
         let float_vtable = F64Object::make_float_vtable();
 
@@ -384,12 +392,16 @@ impl Object for PrimitiveObject<f64> {
         let number_object = float_object.get_super_object().unwrap().clone();
         let mut number_object = number_object.borrow_mut();
         number_object.initialize(Vec::new(), number_vtable);
+        let object_object = number_object.get_super_object().unwrap().clone();
+        let mut object_object = object_object.borrow_mut();
+        object_object.initialize(Vec::new(), object_vtable);
         self.vtable.extend(vtable);
     }
 }
 
 create_type_ops!(f64, f64_add, f64_sub, f64_mul, f64_div, f64_mod, f64_abs, f64_pow, f64_is_zero);
 create_float_ops!(f64, f64_is_nan, f64_is_infinity, f64_is_neg_infinity, f64_is_finite, f64_is_normal, f64_floor, f64_ceil, f64_nat_log, f64_log, f64_hypotenuse, f64_sin, f64_cos, f64_tan, f64_arcsin, f64_arccos, f64_arctan);
+primitive_base_ops!(f64, f64_equals, f64_to_string, f64_order);
 
 pub struct F32Object {
 }
@@ -398,6 +410,13 @@ impl F32Object {
     pub fn make_object(parent: ObjectBox, data: f32) -> ObjectBox {
         let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
         return out as ObjectBox;
+    }
+    pub fn make_object_vtable() -> VTable {
+        let mut methods = HashMap::new();
+        methods.insert(String::from("equals"), Arc::new(Method::RustMethod { fun: Box::new(f32_equals) }));
+        methods.insert(String::from("to_string"), Arc::new(Method::RustMethod { fun: Box::new(f32_to_string) }));
+        methods.insert(String::from("order"), Arc::new(Method::RustMethod { fun: Box::new(f32_order) }));
+        VTable::new(methods)
     }
     pub fn make_number_vtable() -> VTable {
         let mut number_vtable = HashMap::new();
@@ -459,6 +478,7 @@ impl Object for PrimitiveObject<f32> {
         float
     }
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
+        let object_vtable = F32Object::make_object_vtable();
         let number_vtable = F32Object::make_number_vtable();
         let float_vtable = F32Object::make_float_vtable();
 
@@ -469,6 +489,9 @@ impl Object for PrimitiveObject<f32> {
         let number_object = float_object.get_super_object().unwrap().clone();
         let mut number_object = number_object.borrow_mut();
         number_object.initialize(Vec::new(), number_vtable);
+        let object_object = number_object.get_super_object().unwrap().clone();
+        let mut object_object = object_object.borrow_mut();
+        object_object.initialize(Vec::new(), object_vtable);
         self.vtable.extend(vtable);
     }
 }
@@ -476,3 +499,4 @@ impl Object for PrimitiveObject<f32> {
 
 create_type_ops!(f32, f32_add, f32_sub, f32_mul, f32_div, f32_mod, f32_abs, f32_pow, f32_is_zero);
 create_float_ops!(f32, f32_is_nan, f32_is_infinity, f32_is_neg_infinity, f32_is_finite, f32_is_normal, f32_floor, f32_ceil, f32_nat_log, f32_log, f32_hypotenuse, f32_sin, f32_cos, f32_tan, f32_arcsin, f32_arccos, f32_arctan);
+primitive_base_ops!(f32, f32_equals, f32_to_string, f32_order);

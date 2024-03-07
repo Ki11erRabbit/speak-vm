@@ -150,7 +150,6 @@ impl BaseObject {
         let mut methods = HashMap::new();
         methods.insert("clone".to_string(), Arc::new(Method::RustMethod { fun: Box::new(obj_clone) }));
         methods.insert("equals".to_string(), Arc::new(Method::RustMethod { fun: Box::new(obj_equals) }));
-        methods.insert("hash".to_string(), Arc::new(Method::RustMethod { fun: Box::new(obj_hash) }));
         methods.insert("to_string".to_string(), Arc::new(Method::RustMethod { fun: Box::new(obj_to_string) }));
         methods.insert("order".to_string(), Arc::new(Method::RustMethod { fun: Box::new(obj_order) }));
         methods.insert("init".to_string(), Arc::new(Method::RustMethod { fun: Box::new(obj_initalize) }));
@@ -220,14 +219,14 @@ fn obj_equals(object: ObjectBox, context: &mut ContextData) -> Result<Option<Obj
     }
 }
 
-fn obj_hash(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
+/*fn obj_hash(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let object = object.as_ptr();
     let string = format!("{:p}", object);
     let mut hasher = std::hash::DefaultHasher::new();
     string.hash(&mut hasher);
     let hash = hasher.finish();
     Ok(Some(create_u64(hash as u64)))
-}
+}*/
 
 fn obj_to_string(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let object_ptr = object.as_ptr();
