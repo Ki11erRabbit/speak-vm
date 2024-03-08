@@ -3,14 +3,53 @@ use crate::object::block::Block;
 use crate::vm::bytecode::{ByteCode, SpecialInstruction};
 
 use super::bytecode::Literal;
-
+use async_recursion::async_recursion;
 
 pub struct Interpreter {
 }
 
 impl Interpreter {
+    
+    pub fn run_normal(bytecode: &Vec<ByteCode>, context: &mut ContextData) -> Result<(), Fault> {
+        let mut index = 0;
+        while index < bytecode.len() {
+            let code = &bytecode[index];
+            let index_copy = index;
+            let result = futures::executor::block_on(Self::run(&mut index, context, code))?;
+            if !result {
+                break;
+            }
+            if index_copy != index {
+                continue;
+            }
+            index += 1;
+        }
+        Ok(())
+    }
+    
+    #[async_recursion]
+    pub async fn run_as_task(bytecode: &Vec<ByteCode>, context: &mut ContextData) -> Result<(), Fault> {
+        let mut index = 0;
+        while index < bytecode.len() {
+            let code = &bytecode[index];
+            let index_copy = index;
+            let result = Self::run_async(&mut index, context, code).await?;
+            if !result {
+                break;
+            }
+            if index_copy != index {
+                continue;
+            }
+            index += 1;
+        }
+        Ok(())
+    }
 
-    pub fn run(context: &mut ContextData, bytecode: &ByteCode) -> Result<bool, Fault> {
+    async fn run_async(index: &mut usize, context: &mut ContextData, bytecode: &ByteCode) -> Result<bool, Fault> {
+        Self::run(index, context, bytecode).await
+    }
+
+    async fn run(index: &mut usize, context: &mut ContextData, bytecode: &ByteCode) -> Result<bool, Fault> {
         match bytecode {
             ByteCode::Halt => return Ok(false),
             ByteCode::NoOp => {}
@@ -19,8 +58,8 @@ impl Interpreter {
             ByteCode::PushLiteral(literal) => Self::push_literal(context, literal),
             ByteCode::StoreField(index) => Self::store_field(context, *index),
             ByteCode::StoreTemp(index) => Self::store_temp(*index, context),
-            ByteCode::SendMsg(arg, msg_index) => Self::send_msg(*arg, msg_index, context)?,
-            ByteCode::SendSuperMsg(arg, msg_index) => Self::send_super_msg(*arg, msg_index, context)?,
+            ByteCode::SendMsg(arg, msg_index) => Self::send_msg(*arg, msg_index, context).await?,
+            ByteCode::SendSuperMsg(arg, msg_index) => Self::send_super_msg(*arg, msg_index, context).await?,
             ByteCode::SpecialInstruction(instruction) => return Self::special_instruction(context, instruction),
             _ => unimplemented!()
         }
@@ -73,7 +112,7 @@ impl Interpreter {
         context.set_argument(index, value);
     }
 
-    fn send_msg(arg: usize, msg_index: &str, context: &mut ContextData) -> Result<(), Fault>{
+    async fn send_msg(arg: usize, msg_index: &str, context: &mut ContextData) -> Result<(), Fault>{
         for i in 0..arg {
             let value = context.pop().expect("Expected argument");
             context.set_argument(i, value)
@@ -100,9 +139,7 @@ impl Interpreter {
                     context.attach_receiver(object.clone());
                     let object = block.borrow();
                     let object = object.downcast_ref::<Block>().expect("Expected block");
-                    for code in object.bytecode.iter() {
-                        Self::run(context, code)?;
-                    }
+                    Self::run_as_task(&object.bytecode, context).await?;
                     context.pop_frame();
 
                 }
@@ -113,7 +150,7 @@ impl Interpreter {
         Ok(())
     }
 
-    fn send_super_msg(arg: usize, msg_index: &str, context: &mut ContextData) -> Result<(), Fault> {
+    async fn send_super_msg(arg: usize, msg_index: &str, context: &mut ContextData) -> Result<(), Fault> {
         for i in 0..arg {
             let value = context.pop().expect("Expected argument");
             context.set_argument(i, value)
@@ -143,9 +180,7 @@ impl Interpreter {
                     context.attach_receiver(parent);
                     let object = block.borrow();
                     let object = object.downcast_ref::<Block>().expect("Expected block");
-                    for code in object.bytecode.iter() {
-                        Self::run(context, code)?;
-                    }
+                    Self::run_as_task(&object.bytecode, context).await?;
                     context.pop_frame();
                 }
             }

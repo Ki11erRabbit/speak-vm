@@ -2,9 +2,7 @@ use super::ContextData;
 use super::Object;
 use super::ObjectBox;
 use super::VTable;
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
 use crate::object::Method;
 use std::sync::Arc;
 use super::Fault;
@@ -26,12 +24,12 @@ impl Stack {
     }
 
     pub fn make_object(parent: ObjectBox) -> ObjectBox {
-        Rc::new(RefCell::new(Stack {super_object: Some(parent), data: Vec::new(), vtable: VTable::new_empty()})) as ObjectBox
+        ObjectBox::new(Stack {super_object: Some(parent), data: Vec::new(), vtable: VTable::new_empty()})
     }
 
     pub fn make_object_with_stack(parent: ObjectBox,
                                   data: Vec<ObjectBox>) -> ObjectBox {
-        Rc::new(RefCell::new(Stack {super_object: Some(parent), data, vtable: VTable::new_empty()})) as ObjectBox
+        ObjectBox::new(Stack {super_object: Some(parent), data, vtable: VTable::new_empty()})
     }
     
     pub fn push(&mut self, value: ObjectBox) {

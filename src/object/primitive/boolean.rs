@@ -1,6 +1,5 @@
-use std::cell::RefCell;
 use std::sync::Arc;
-use std::{collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 use crate::object::{Object, ObjectBox};
 use crate::object::VTable;
 use super::PrimitiveObject;
@@ -20,7 +19,7 @@ pub struct BooleanObject {}
 
 impl BooleanObject {
     pub fn make_object(parent: ObjectBox, data: bool) -> ObjectBox {
-        Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)))
+        ObjectBox::new(PrimitiveObject::new(Some(parent), data))
     }
     pub fn make_object_vtable() -> VTable {
         let mut methods = HashMap::new();

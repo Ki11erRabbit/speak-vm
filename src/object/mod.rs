@@ -47,7 +47,35 @@ impl std::fmt::Display for Fault {
 
 impl std::error::Error for Fault {}
 
-pub type ObjectBox = Rc<RefCell<dyn Object>>;
+//pub type ObjectBox = Rc<RefCell<dyn Object>>;
+
+unsafe impl Send for ObjectBox {}
+
+#[derive(Clone)]
+pub struct ObjectBox {
+    pub data: Rc<RefCell<dyn Object>>,
+}
+
+impl ObjectBox {
+    pub fn new<O: Object>(data: O) -> ObjectBox {
+        ObjectBox {
+            data: Rc::new(RefCell::new(data))
+        }
+    }
+
+    pub fn borrow(&self) -> std::cell::Ref<dyn Object> {
+        self.data.borrow()
+    }
+
+    pub fn borrow_mut(&self) -> std::cell::RefMut<dyn Object> {
+        self.data.borrow_mut()
+    }
+
+    pub fn as_ptr(&self) -> *const () {
+        self.data.as_ptr() as *const ()
+    }
+}
+
 
 
 pub trait Object: downcast_rs::Downcast {
@@ -91,7 +119,7 @@ pub struct Nil;
 
 impl Nil {
     pub fn new() -> ObjectBox {
-        Rc::new(RefCell::new(Nil)) as ObjectBox
+        ObjectBox::new(Nil)
     }
 }
 
@@ -155,7 +183,7 @@ impl BaseObject {
     }
 
     pub fn make_object(parent: ObjectBox) -> ObjectBox {
-        Rc::new(RefCell::new(BaseObject {vtable: VTable::new_empty(), super_object: Some(parent)})) as ObjectBox
+        ObjectBox::new(BaseObject {vtable: VTable::new_empty(), super_object: Some(parent)})
     }
 }
 
@@ -272,12 +300,12 @@ pub struct ObjectStruct {
 
 impl ObjectStruct {
     pub fn new(class: Option<Arc<Class>>, super_object: Option<ObjectBox>) -> ObjectBox {
-        Rc::new(RefCell::new(ObjectStruct {
+        ObjectBox::new(ObjectStruct {
             class,
             super_object,
             fields: Box::new([]),
             vtable: VTable::new_empty(),
-        })) as ObjectBox
+        })
     }
 }
 
@@ -309,7 +337,7 @@ impl Object for ObjectStruct {
             fields: fields.into_boxed_slice(),
             vtable: self.vtable.clone(),
         };
-        Rc::new(RefCell::new(object)) as ObjectBox
+        ObjectBox::new(object)
     }
     fn initialize(&mut self, arguments: Vec<ObjectBox>, vtable: VTable) {
         self.fields = arguments.into_boxed_slice();
@@ -525,7 +553,7 @@ impl Message {
             index,
             vtable: VTable::new(HashMap::new()),
         };
-        Rc::new(RefCell::new(message)) as ObjectBox
+        ObjectBox::new(message)
     }
 }
 
@@ -552,7 +580,7 @@ impl Object for Message {
             index: self.index.clone(),
             vtable: self.vtable.clone(),
         };
-        Rc::new(RefCell::new(message)) as ObjectBox
+        ObjectBox::new(message)
     }
     fn initialize(&mut self, _arguments: Vec<ObjectBox>, vtable: VTable) {
         self.vtable.extend(vtable);
@@ -710,6 +738,7 @@ impl ObjectFactory {
     fn make_parent(&self, name: &str) -> Result<ObjectBox, Fault> {
         self.create_object(self.parents.get(name).ok_or(Fault::InvalidType)?, &[])
     }
+    
     
     fn create_object(&self, name: &str, arguments: &[ObjectBox]) -> Result<ObjectBox, Fault> {
         match name {
@@ -1055,7 +1084,7 @@ impl Context {
     pub fn make_object() -> ObjectBox {
         let mut context = Context::new();
         context.vtable.extend(Context::make_vtable());
-        Rc::new(RefCell::new(context)) as ObjectBox
+        ObjectBox::new(context)
     }
 
 }
@@ -1095,7 +1124,7 @@ fn context_new(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectB
 
 
 
-pub fn object_clone(object: ObjectBox) -> ObjectBox {
+/*pub fn object_clone(object: ObjectBox) -> ObjectBox {
     let borrowed_object = object.borrow();
     if let Some(obj) = borrowed_object.downcast_ref::<PrimitiveObject<i64>>() {
         let new_obj = obj.clone();
@@ -1119,4 +1148,4 @@ pub fn object_clone(object: ObjectBox) -> ObjectBox {
     } else {
         return object.clone()
     }
-}
+}*/

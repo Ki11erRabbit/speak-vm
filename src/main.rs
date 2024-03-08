@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use object::{init_stack, Class, ContextData, Method};
 use vm::bytecode::Literal;
+use object::ObjectBox;
 
 use crate::vm::bytecode::ByteCode;
 use crate::vm::interpreter::Interpreter;
@@ -14,7 +15,17 @@ use clap::Parser;
 
 #[derive(Parser, Debug)]
 struct Args {
+    #[clap(short, long)]
+    server_mode: bool,
+    #[clap(short, long)]
     object_files: Vec<String>,
+    args: Vec<String>
+}
+
+impl Args {
+    fn into_iter(self) -> std::vec::IntoIter<String> {
+        self.args.into_iter()
+    }
 }
 
 fn load_object_file(file: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -73,16 +84,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ByteCode::Halt
     ];
     
+    if args.server_mode {
+        unimplemented!()
 
-
-    for instruction in instructions {
-        match Interpreter::run(&mut context, &instruction)? {
-            false => {
-                println!("Halted");
+    } else {
+        let arguments: Vec<ObjectBox> = args.into_iter().map(|x| object::create_string(x)).collect();
+        for (i, arg) in arguments.into_iter().enumerate() {
+            context.set_argument(i, arg);
+        }
+        let main = object::create_object("Main", &arguments)?.ok_or("No main object found")?;
+        let main = main.borrow();
+        let message = object::create_message("main");
+        let main_method = main.process_message(message);
+        let main_method = main_method.ok_or("No main method found")?;
+        match *main_method {
+            Method::BytecodeMethod { block } => {
+                let block = block.borrow();
+                let block = block.downcast_ref::<object::block::Block>().ok_or("Block not found")?;
+                let block = block.call(&mut context)?;
             }
-            _ => {}
+            _ => unimplemented!()
         }
     }
+    
+
+    Interpreter::run_normal(&instructions, &mut context)?;
 
 
 

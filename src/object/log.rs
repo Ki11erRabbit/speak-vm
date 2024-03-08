@@ -8,8 +8,6 @@ use log::{info, warn, error, debug, trace};
 
 use super::{Fault, Object, ObjectBox};
 use crate::object::VTable;
-use std::cell::RefCell;
-use std::rc::Rc;
 
 
 
@@ -36,7 +34,7 @@ impl Logger {
             super_object: Some(parent),
             vtable: VTable::new_empty(),
         };
-        Rc::new(RefCell::new(logger)) as ObjectBox
+        ObjectBox::new(logger)
     }
     pub fn make_vtable() -> VTable {
         let mut methods = HashMap::new();

@@ -34,8 +34,8 @@ pub struct FloatObject {
 
 impl FloatObject {
     pub fn make_object(parent: ObjectBox) -> ObjectBox {
-        let out = Rc::new(RefCell::new(FloatObject {super_object: Some(parent), vtable: VTable::new_empty()}));
-        return out as ObjectBox;
+        let out = ObjectBox::new(FloatObject {super_object: Some(parent), vtable: VTable::new_empty()});
+        return out
     }
     pub fn make_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -311,8 +311,8 @@ impl F64Object {
 
     pub fn make_object(parent: ObjectBox,
                        data: f64) -> ObjectBox {
-        let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
-        return out as ObjectBox;
+        let out = ObjectBox::new(PrimitiveObject::new(Some(parent), data));
+        return out;
     }
     pub fn make_object_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -408,8 +408,8 @@ pub struct F32Object {
 
 impl F32Object {
     pub fn make_object(parent: ObjectBox, data: f32) -> ObjectBox {
-        let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
-        return out as ObjectBox;
+        let out = ObjectBox::new(PrimitiveObject::new(Some(parent), data));
+        return out;
     }
     pub fn make_object_vtable() -> VTable {
         let mut methods = HashMap::new();

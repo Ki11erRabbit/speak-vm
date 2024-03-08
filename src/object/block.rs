@@ -1,6 +1,4 @@
 use std::collections::HashMap;
-use std::rc::Rc;
-use std::cell::RefCell;
 use crate::object::{Object, ObjectBox};
 use crate::object::Fault;
 use crate::vm::interpreter::Interpreter;
@@ -27,7 +25,7 @@ pub struct Block {
 impl Block {
     pub fn make_object(parent: ObjectBox,
                        bytecode: Vec<ByteCode>) -> ObjectBox {
-        Rc::new(RefCell::new(Block {super_object: parent, bytecode, vtable: VTable::new_empty(), captures: Vec::new()})) as ObjectBox
+        ObjectBox::new(Block {super_object: parent, bytecode, vtable: VTable::new_empty(), captures: Vec::new()})
     }
     pub fn make_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -35,9 +33,7 @@ impl Block {
         VTable::new(methods)
     }
     pub fn call(&self, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-        for code in self.bytecode.iter() {
-            Interpreter::run(context, code)?;
-        }
+        Interpreter::run_normal(&self.bytecode, context)?;
         Ok(None)
     }
 }
@@ -76,8 +72,6 @@ impl Object for Block {
 fn value(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let object = object.borrow();
     let object = object.downcast_ref::<Block>().expect("Expected block");
-    for code in object.bytecode.iter() {
-        Interpreter::run(context, code)?;
-    }
+    Interpreter::run_normal(&object.bytecode, context)?;
     Ok(None)
 }

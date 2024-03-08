@@ -1,6 +1,5 @@
 use super::{Method, ObjectBox};
 use std::collections::HashMap;
-use std::{cell::RefCell, rc::Rc};
 use crate::object::Object;
 use crate::object::ContextData;
 use std::sync::Arc;
@@ -46,8 +45,8 @@ pub struct IntegerObject {
 
 impl IntegerObject {
     pub fn make_object(parent: ObjectBox) -> ObjectBox {
-        let out = Rc::new(RefCell::new(IntegerObject{super_object: Some(parent), vtable: VTable::new_empty()}));
-        return out as ObjectBox;
+        let out = ObjectBox::new(IntegerObject{super_object: Some(parent), vtable: VTable::new_empty()});
+        return out;
     }
     pub fn make_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -324,8 +323,8 @@ pub struct I64Object {
 impl I64Object {
 
     pub fn make_object(parent: ObjectBox, data: i64) -> ObjectBox {
-        let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
-        return out as ObjectBox;
+        let out = ObjectBox::new(PrimitiveObject::new(Some(parent), data));
+        return out;
     }
     pub fn make_object_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -409,8 +408,8 @@ pub struct U64Object {
 
 impl U64Object {
     pub fn make_object(parent: ObjectBox, data: u64) -> ObjectBox {
-        let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
-        return out as ObjectBox;
+        let out = ObjectBox::new(PrimitiveObject::new(Some(parent), data));
+        return out;
     }
     pub fn make_object_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -494,8 +493,8 @@ pub struct I32Object {
 
 impl I32Object {
     pub fn make_object(parent: ObjectBox, data: i32) -> ObjectBox {
-        let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
-        return out as ObjectBox;
+        let out = ObjectBox::new(PrimitiveObject::new(Some(parent), data));
+        return out;
     }
     pub fn make_object_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -579,8 +578,8 @@ pub struct U32Object {
 
 impl U32Object {
     pub fn make_object(parent: ObjectBox, data: u32) -> ObjectBox {
-        let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
-        return out as ObjectBox;
+        let out = ObjectBox::new(PrimitiveObject::new(Some(parent), data));
+        return out;
     }
     pub fn make_object_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -664,8 +663,8 @@ pub struct I16Object {
 
 impl I16Object {
     pub fn make_object(parent: ObjectBox, data: i16) -> ObjectBox {
-        let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
-        return out as ObjectBox;
+        let out = ObjectBox::new(PrimitiveObject::new(Some(parent), data));
+        return out;
     }
     pub fn make_object_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -749,8 +748,8 @@ pub struct U16Object {
 
 impl U16Object {
     pub fn make_object(parent: ObjectBox, data: u16) -> ObjectBox {
-        let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
-        return out as ObjectBox;
+        let out = ObjectBox::new(PrimitiveObject::new(Some(parent), data));
+        return out;
     }
     pub fn make_object_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -834,8 +833,8 @@ pub struct I8Object {
 
 impl I8Object {
     pub fn make_object(parent: ObjectBox, data: i8) -> ObjectBox {
-        let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
-        return out as ObjectBox;
+        let out = ObjectBox::new(PrimitiveObject::new(Some(parent), data));
+        return out;
     }
     pub fn make_object_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -919,8 +918,8 @@ pub struct U8Object {
 
 impl U8Object {
     pub fn make_object(parent: ObjectBox, data: u8) -> ObjectBox {
-        let out = Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), data)));
-        return out as ObjectBox;
+        let out = ObjectBox::new(PrimitiveObject::new(Some(parent), data));
+        return out;
     }
     pub fn make_object_vtable() -> VTable {
         let mut methods = HashMap::new();

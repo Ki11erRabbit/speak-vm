@@ -3,8 +3,6 @@ use crate::object::Object;
 use super::Fault;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::rc::Rc;
-use std::cell::RefCell;
 use super::ContextData;
 
 
@@ -36,7 +34,7 @@ pub struct NumberObject {
 
 impl NumberObject {
     pub fn make_object(parent: ObjectBox) -> ObjectBox {
-        Rc::new(RefCell::new(NumberObject {super_object: Some(parent), vtable: VTable::new_empty()})) as ObjectBox
+        ObjectBox::new(NumberObject {super_object: Some(parent), vtable: VTable::new_empty()})
     }
     pub fn make_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -71,7 +69,7 @@ impl Object for NumberObject {
     }
     fn duplicate(&self) -> ObjectBox {
         let number = NumberObject {super_object: Some(self.super_object.clone().unwrap().borrow().duplicate()), vtable: self.vtable.clone()};
-        Rc::new(RefCell::new(number))
+        ObjectBox::new(number)
     }
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
         self.vtable.extend(NumberObject::make_vtable());

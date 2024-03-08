@@ -1,8 +1,6 @@
 use crate::object::Method;
 use crate::object::Object;
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
 use std::sync::Arc;
 use crate::object::primitive::PrimitiveObject;
 use crate::object::ObjectBox;
@@ -19,7 +17,7 @@ pub struct CharacterObject {}
 
 impl CharacterObject {
     pub fn make_object(parent: ObjectBox, value: char) -> ObjectBox {
-        Rc::new(RefCell::new(PrimitiveObject::new(Some(parent), value)))
+        ObjectBox::new(PrimitiveObject::new(Some(parent), value))
     }
     pub fn make_object_vtable() -> VTable {
         let mut methods = HashMap::new();

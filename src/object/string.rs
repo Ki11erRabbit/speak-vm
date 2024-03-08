@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 use std::sync::Arc;
 use super::vector::VectorObject;
 use super::{Object, ObjectBox, VTable, Method, ContextData, Fault};
@@ -22,7 +22,7 @@ impl StringObject {
             value,
             vtable: VTable::new_empty(),
         };
-        Rc::new(RefCell::new(string)) as ObjectBox
+        ObjectBox::new(string)
     }
     fn make_object_vtable() -> VTable {
         let mut methods = HashMap::new();
