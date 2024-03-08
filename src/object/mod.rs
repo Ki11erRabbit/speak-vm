@@ -10,8 +10,6 @@ use std::sync::Arc;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::hash::Hash;
-use std::hash::Hasher;
 use std::sync::RwLock;
 
 use crate::vm::bytecode::ByteCode;
@@ -602,6 +600,7 @@ impl ObjectFactory {
         context.parents.insert(String::from("F64"), String::from("Float"));
         context.parents.insert(String::from("F32"), String::from("Float"));
         context.parents.insert(String::from("Boolean"), String::from("Object"));
+        context.parents.insert(String::from("Vector"), String::from("Object"));
 
 
         context
@@ -704,6 +703,9 @@ impl ObjectFactory {
     fn create_block(&self, bytecode: Vec<ByteCode>) -> ObjectBox {
         block::Block::make_object(self.create_base_object(), bytecode)
     }
+    fn create_vector(&self, vector: Vec<ObjectBox>) -> ObjectBox {
+        vector::VectorObject::make_object(self.create_base_object(), vector.into())
+    }
 
     fn make_parent(&self, name: &str) -> Result<ObjectBox, Fault> {
         self.create_object(self.parents.get(name).ok_or(Fault::InvalidType)?, &[])
@@ -725,7 +727,7 @@ impl ObjectFactory {
             "U8" => Ok(self.create_u8(0)),
             "F64" => Ok(self.create_f64(0.0)),
             "F32" => Ok(self.create_f32(0.0)),
-            "String" => Ok(self.create_string("".to_string())),
+            "String" => Ok(self.create_string("".to_string())),//TODO: add way to create it from vector
             "Char" => Ok(self.create_character(' ')),
             "Message" => {
                 if arguments.len() == 1 {
@@ -739,6 +741,10 @@ impl ObjectFactory {
             "Logger" => Ok(self.create_logger()),
             "Stack" => Ok(self.create_stack()),
             "Block" => Ok(self.create_block(vec![])),
+            "Vector" => {
+                let vector = Vec::new();
+                Ok(self.create_vector(vector))
+            },
             x => {
                 let object = ObjectStruct::new(self.get_class(x), Some(self.make_parent(x)?));
                 Ok(object)
@@ -920,6 +926,14 @@ pub fn create_block(bytecode: Vec<ByteCode>) -> ObjectBox {
     object.initialize(vec![], VTable::new_empty());
     drop(object);
     block
+}
+
+pub fn create_vector(vector: Vec<ObjectBox>) -> ObjectBox {
+    let vector = get_factory().create_vector(vector);
+    let mut object = vector.borrow_mut();
+    object.initialize(vec![], VTable::new_empty());
+    drop(object);
+    vector
 }
 
 

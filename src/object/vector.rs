@@ -59,7 +59,7 @@ impl Object for VectorObject {
         drop(vec_obj);
         vector
     }
-    fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
+    fn initialize(&mut self, args: Vec<ObjectBox>, vtable: VTable) {
         self.vtable.extend(VectorObject::make_vtable());
         self.vtable.extend(vtable);
         match &mut self.super_object {
@@ -68,6 +68,13 @@ impl Object for VectorObject {
             }
             None => {}
         }
+        let arg = args.get(0).unwrap();
+        let arg = arg.borrow();
+        let arg = arg.downcast_ref::<PrimitiveObject<u64>>().unwrap();
+        let size = arg.data as usize;
+        let mut vec = Vec::new();
+        vec.resize(size, super::Nil::new());
+        self.value = vec.into_boxed_slice();
     }
 }
 

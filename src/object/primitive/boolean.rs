@@ -30,7 +30,7 @@ impl BooleanObject {
         VTable::new(methods)
     }
     pub fn make_vtable() -> VTable {
-        let mut methods = HashMap::new();
+        let methods = HashMap::new();
         VTable::new(methods)
     }
 }
@@ -59,6 +59,12 @@ impl Object for PrimitiveObject<bool> {
         boolean as ObjectBox
     }
     fn initialize(&mut self, _: Vec<ObjectBox>, vtable: VTable) {
+        let bool_vtable = BooleanObject::make_vtable();
+        let object_vtable = BooleanObject::make_object_vtable();
+        let parent = self.super_object.clone().unwrap();
+        let mut parent = parent.borrow_mut();
+        parent.initialize(Vec::new(), object_vtable);
+        self.vtable.extend(bool_vtable);
         self.vtable.extend(vtable);
     }
 }
