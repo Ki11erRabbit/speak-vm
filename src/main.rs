@@ -60,7 +60,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];*/
     
     let bytecode = vec![
-        ByteCode::AccessTemp(3),
+        //ByteCode::AccessTemp(3),
         ByteCode::PushLiteral(Literal::String(String::from("Logger"))),
         ByteCode::SendMsg(1,String::from("new")),
         ByteCode::SendMsg(0,String::from("init")),
@@ -94,7 +94,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             context.set_argument(i, arg.clone());
         }
         let main = object::create_object("Main", &arguments)?.ok_or("No main object found")?;
-        let main = main.borrow();
+        let mut main = main.borrow_mut();
+        main.initialize(Vec::new(), object::VTable::new_empty());
         let message = object::create_message("main");
         let main_method = main.process_message(message);
         let main_method = main_method.ok_or("No main method found")?;
@@ -108,7 +109,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     let mut tasks = VecDeque::new();
-    let mut current_tasks: Arc<RwLock<Vec<Arc<Mutex<Interpreter>>>>> = Arc::new(RwLock::new(Vec::new()));
+    let current_tasks: Arc<RwLock<Vec<Arc<Mutex<Interpreter>>>>> = Arc::new(RwLock::new(Vec::new()));
     let mut next_task = 0;
     let lock = Arc::new(Mutex::new(()));
 
@@ -123,6 +124,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 context.attach_code(instructions);
                 let interpreter = Interpreter::new(context);
                 tasks.push_back(Arc::new(Mutex::new(interpreter)));
+                let lock = lock.clone();
+                let current_tasks = current_tasks.clone();
+                std::thread::spawn(move || {
+                    let index = next_task;
+                    let interpreters = current_tasks;
+                    let lock = lock;
+                    let _ = Interpreter::run_loop(index, interpreters, lock).unwrap();
+                });
                 next_task += 1;
             }
             Err(std::sync::mpsc::TryRecvError::Empty) => {

@@ -22,7 +22,10 @@ impl Interpreter {
         'control: loop {
             let _ = lock.lock();
             let interpreters_ref = interpreters.read().expect("Expected read lock");
-            let interpreter = interpreters_ref[index].clone();
+            let Some(interpreter) = interpreters_ref.get(index) else {
+                continue;
+            };
+            let interpreter = interpreter.clone();
             let mut interpreter = interpreter.lock().expect("Expected lock");
             drop(interpreters_ref);
             let mut context = interpreter.context.take();
@@ -43,9 +46,16 @@ impl Interpreter {
     pub fn run(&mut self, context: &mut ContextData) -> Result<bool, Fault> {
         let mut index = self.code.last().expect("Expected last frame").0;
         let index_copy = index;
-        let mut bytecode = self.code.last().expect("Expected last frame").1.clone();
+        let bytecode = self.code.last().expect("Expected last frame").1.clone();
+        if index >= bytecode.len() {
+            return Ok(false);
+        }
         let result = self.interpret(&mut index, context, &bytecode[index_copy])?;
+        if index_copy == index {
+            index += 1;
+        }
         self.code.last_mut().expect("Expected last frame").0 = index;
+
 
         Ok(result)
     }

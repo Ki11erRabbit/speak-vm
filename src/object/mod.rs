@@ -361,7 +361,7 @@ impl Object for ObjectStruct {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VTable {
     table: HashMap<String, Arc<Method>>,
 }
