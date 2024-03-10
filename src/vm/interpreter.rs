@@ -18,7 +18,7 @@ impl Interpreter {
         }
     }
     
-    pub fn run_loop(index: usize, interpreters: Arc<RwLock<Vec<Arc<Mutex<Interpreter>>>>>, lock: Arc<Mutex<()>>) -> Result<bool, Fault> {
+    pub fn run_loop(index: usize, interpreters: Arc<RwLock<Vec<Arc<Mutex<Option<Interpreter>>>>>>, lock: Arc<Mutex<()>>) {
         'control: loop {
             let _ = lock.lock();
             let interpreters_ref = interpreters.read().expect("Expected read lock");
@@ -26,15 +26,30 @@ impl Interpreter {
                 continue;
             };
             let interpreter = interpreter.clone();
-            let mut interpreter = interpreter.lock().expect("Expected lock");
+            let mut interpreter_mut = interpreter.lock().expect("Expected lock");
             drop(interpreters_ref);
+            if interpreter_mut.is_none() {
+                continue;
+            }
+            let interpreter = interpreter_mut.as_mut().unwrap();
             let mut context = interpreter.context.take();
             if let Some(code) = context.as_mut().unwrap().detach_code() {
                 interpreter.code.push((0, code));
             }
             loop {
                 if let Ok(_) = lock.try_lock() {
-                    interpreter.run(&mut context.as_mut().unwrap())?;
+                    match interpreter.run(&mut context.as_mut().unwrap()) {
+                        Ok(true) => {}
+                        Ok(false) => {
+                            *interpreter_mut = None;
+                            continue 'control;
+                        }
+                        Err(err) => {
+                            println!("Error: {:?}", err);
+                            *interpreter_mut = None;
+                            continue 'control;
+                        }
+                    }
                 } else {
                     interpreter.context = context;
                     continue 'control;

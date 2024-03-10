@@ -108,8 +108,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             _ => unimplemented!()
         }
     }
-    let mut tasks = VecDeque::new();
-    let current_tasks: Arc<RwLock<Vec<Arc<Mutex<Interpreter>>>>> = Arc::new(RwLock::new(Vec::new()));
+    let mut tasks: VecDeque<Interpreter> = VecDeque::new();
+    let current_tasks: Arc<RwLock<Vec<Arc<Mutex<Option<Interpreter>>>>>> = Arc::new(RwLock::new(Vec::new()));
     let mut next_task = 0;
     let lock = Arc::new(Mutex::new(()));
 
@@ -123,14 +123,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let mut context = ContextData::new(init_stack());
                 context.attach_code(instructions);
                 let interpreter = Interpreter::new(context);
-                tasks.push_back(Arc::new(Mutex::new(interpreter)));
+                tasks.push_back(interpreter);
                 let lock = lock.clone();
                 let current_tasks = current_tasks.clone();
-                std::thread::spawn(move || {
+                let _ = std::thread::Builder::new().name(format!("core {}", next_task)).spawn(move || {
                     let index = next_task;
                     let interpreters = current_tasks;
                     let lock = lock;
-                    let _ = Interpreter::run_loop(index, interpreters, lock).unwrap();
+                    Interpreter::run_loop(index, interpreters, lock);
                 });
                 next_task += 1;
             }
@@ -150,10 +150,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let mut task = tasks.pop_front();
                 if current_tasks.len() <= i {
                     if let Some(task) = task {
-                        current_tasks.push(task);
+                        current_tasks.push(Arc::new(Mutex::new(Some(task))));
                         continue;
                     }
                 }
+                match current_tasks[i].try_lock() {
+                    Ok(mut current_task) => {
+                        if let Some(ref mut task) = task {
+                            std::mem::swap(task, current_task.as_mut().unwrap());
+                            continue;
+                        }
+                    }
+                    Err(TryLockError::WouldBlock) => {
+                        if let Some(task) = task {
+                            tasks.push_front(task);
+                            continue;
+                        }
+                    }
+                    Err(x) => {
+                        eprintln!("{:?}", x);
+                        return Ok(())
+                    }
+                };
                 let current_task = current_tasks[i].clone();
                 // Here false is back and true is front
                 let mut back_or_front = true;
@@ -175,14 +193,44 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 } else {
                     drop(current_task);
-                    if let Some(ref mut task) = task {
-                        std::mem::swap(task, &mut current_tasks[i]);
-                    }
+                    match current_tasks[i].try_lock() {
+                        Ok(mut current_task) => {
+                            if let Some(ref mut task) = task {
+                                std::mem::swap(task, current_task.as_mut().unwrap());
+                                continue;
+                            }
+                        }
+                        Err(TryLockError::WouldBlock) => {
+                            if let Some(task) = task {
+                                tasks.push_front(task);
+                                continue;
+                            }
+                        }
+                        Err(x) => {
+                            eprintln!("{:?}", x);
+                            return Ok(())
+                        }
+                    };
                     if let Some(task) = task {
                         tasks.push_back(task);
                     }
                 }
             };
+            
+            let mut indices = Vec::new();
+            for (i, task) in current_tasks.iter().enumerate() {
+                if let Ok(task) = task.try_lock() {
+                    if let None = task.as_ref() {
+                        indices.push(i);
+                    }
+                }
+            }
+            for i in indices.into_iter().rev() {
+                current_tasks.remove(i);
+            }
+            if current_tasks.len() == 0 {
+                break;
+            }
 
             drop(guard);
         }
