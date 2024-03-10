@@ -100,34 +100,34 @@ impl Object for IntegerObject {
 }
 
 fn integer_divides(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Integer divides")))
 }
 
 fn integer_shift_right(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Integer shift_right")))
 }
 
 fn integer_shift_left(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Integer shift_left")))
 }
 
 fn integer_bitwise_and(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Integer and")))
 }
 
 fn integer_bitwise_or(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Integer or")))
 }
 
 fn integer_bitwise_xor(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Integer xor")))
 }
 
 macro_rules! create_integer_ops {
     ($type:ty, $divides:ident, $shr:ident, $shl:ident, $and:ident, $or:ident, $xor:ident) => {
         fn $divides(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let object = object.borrow();
-            let object = object.downcast_ref::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_ref::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Integer divides: expected {}", stringify!($type))))?;
             let other = context.arguments[0].borrow();
             if let Some(other) = other.downcast_ref::<PrimitiveObject<i64>>() {
                 if object.data.is_multiple_of(&(other.data as $type)) {
@@ -178,13 +178,13 @@ macro_rules! create_integer_ops {
                     Ok(Some(create_boolean(false)))
                 }
             } else {
-                Err(Fault::InvalidType)
+                Err(Fault::InvalidType(format!("Integer divides: expected {}", stringify!($type))))
             }
         }
 
         fn $shr(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object = object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Integer shift_right: expected {}", stringify!($type))))?;
             let other = context.arguments[0].borrow();
             if let Some(other) = other.downcast_ref::<PrimitiveObject<i64>>() {
                 object.data >>= other.data as $type
@@ -203,14 +203,14 @@ macro_rules! create_integer_ops {
             } else if let Some(other) = other.downcast_ref::<PrimitiveObject<u8>>() {
                 object.data >>= other.data as $type
             } else {
-                return Err(Fault::InvalidType)
+                return Err(Fault::InvalidType(format!("Integer shift_right: expected {}", stringify!($type))))
             }
             Ok(None)
         }
 
         fn $shl(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object = object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Integer shift_left: expected {}", stringify!($type))))?;
             let other = context.arguments[0].borrow();
             if let Some(other) = other.downcast_ref::<PrimitiveObject<i64>>() {
                 object.data <<= other.data as $type
@@ -229,14 +229,14 @@ macro_rules! create_integer_ops {
             } else if let Some(other) = other.downcast_ref::<PrimitiveObject<u8>>() {
                 object.data <<= other.data as $type
             } else {
-                return Err(Fault::InvalidType)
+                return Err(Fault::InvalidType(format!("Integer shift_left: expected Integer")))
             }
             Ok(None)
         }
 
         fn $and(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object = object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Integer and: expected {}", stringify!($type))))?;
             let other = context.arguments[0].borrow();
             if let Some(other) = other.downcast_ref::<PrimitiveObject<i64>>() {
                 object.data &= other.data as $type
@@ -255,14 +255,14 @@ macro_rules! create_integer_ops {
             } else if let Some(other) = other.downcast_ref::<PrimitiveObject<u8>>() {
                 object.data &= other.data as $type
             } else {
-                return Err(Fault::InvalidType)
+                return Err(Fault::InvalidType(format!("Integer and: expected Integer")))
             }
             Ok(None)
         }
 
         fn $or(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object = object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Integer or: expected {}", stringify!($type))))?;
             let other = context.arguments[0].borrow();
             if let Some(other) = other.downcast_ref::<PrimitiveObject<i64>>() {
                 object.data |= other.data as $type
@@ -281,14 +281,14 @@ macro_rules! create_integer_ops {
             } else if let Some(other) = other.downcast_ref::<PrimitiveObject<u8>>() {
                 object.data |= other.data as $type
             } else {
-                return Err(Fault::InvalidType)
+                return Err(Fault::InvalidType(format!("Integer or: expected Integer")))
             }
             Ok(None)
         }
 
         fn $xor(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object = object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Integer xor: expected {}", stringify!($type))))?;
             let other = context.arguments[0].borrow();
             if let Some(other) = other.downcast_ref::<PrimitiveObject<i64>>() {
                 object.data ^= other.data as $type
@@ -307,7 +307,7 @@ macro_rules! create_integer_ops {
             } else if let Some(other) = other.downcast_ref::<PrimitiveObject<u8>>() {
                 object.data ^= other.data as $type
             } else {
-                return Err(Fault::InvalidType)
+                return Err(Fault::InvalidType(format!("Integer xor: expected Integer")))
             }
             Ok(None)
         }

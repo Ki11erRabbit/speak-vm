@@ -76,7 +76,7 @@ fn boolean_equals(object: ObjectBox, context: &mut ContextData) -> Result<Option
     let other = other.borrow();
     match (object.downcast_ref::<PrimitiveObject<bool>>(), other.downcast_ref::<PrimitiveObject<bool>>()) {
         (Some(obj), Some(other)) => Ok(Some(crate::object::create_boolean(obj.data == other.data))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("Boolean equals: Expected Boolean")))
     }
 }
 
@@ -84,7 +84,7 @@ fn boolean_to_string(object: ObjectBox, _: &mut ContextData) -> Result<Option<Ob
     let object = object.borrow();
     match object.downcast_ref::<PrimitiveObject<bool>>() {
         Some(obj) => Ok(Some(crate::object::create_string(obj.data.to_string()))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("Boolean equals: Expected Boolean")))
     }
 }
 
@@ -100,7 +100,7 @@ fn boolean_order(object: ObjectBox, context: &mut ContextData) -> Result<Option<
             } else {
                 Ok(Some(crate::object::create_i8(0)))
             },
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("Boolean equals: Expected Boolean")))
     }
 }
 

@@ -1,85 +1,87 @@
 use crate::object::{ContextData, Fault, Method, Nil};
 use crate::object::block::Block;
 use crate::vm::bytecode::{ByteCode, SpecialInstruction};
+use std::sync::{Arc, Mutex, RwLock};
 
 use super::bytecode::Literal;
-use async_recursion::async_recursion;
 
 pub struct Interpreter {
+    code: Vec<(usize, Arc<Vec<ByteCode>>)>,
+    context: Option<ContextData>,
 }
 
 impl Interpreter {
-    
-    pub fn run_normal(bytecode: &Vec<ByteCode>, context: &mut ContextData) -> Result<(), Fault> {
-        let mut index = 0;
-        while index < bytecode.len() {
-            let code = &bytecode[index];
-            let index_copy = index;
-            let result = futures::executor::block_on(Self::run(&mut index, context, code))?;
-            if !result {
-                break;
-            }
-            if index_copy != index {
-                continue;
-            }
-            index += 1;
+    pub fn new(context: ContextData) -> Self {
+        Self {
+            code: Vec::new(),
+            context: Some(context),
         }
-        Ok(())
     }
     
-    #[async_recursion]
-    pub async fn run_as_task(bytecode: &Vec<ByteCode>, context: &mut ContextData) -> Result<(), Fault> {
-        let mut index = 0;
-        while index < bytecode.len() {
-            let code = &bytecode[index];
-            let index_copy = index;
-            let result = Self::run_async(&mut index, context, code).await?;
-            if !result {
-                break;
+    pub fn run_loop(index: usize, interpreters: Arc<RwLock<Vec<Arc<Mutex<Interpreter>>>>>, lock: Arc<Mutex<()>>) -> Result<bool, Fault> {
+        'control: loop {
+            let _ = lock.lock();
+            let interpreters_ref = interpreters.read().expect("Expected read lock");
+            let interpreter = interpreters_ref[index].clone();
+            let mut interpreter = interpreter.lock().expect("Expected lock");
+            drop(interpreters_ref);
+            let mut context = interpreter.context.take();
+            if let Some(code) = context.as_mut().unwrap().detach_code() {
+                interpreter.code.push((0, code));
             }
-            if index_copy != index {
-                continue;
+            loop {
+                if let Ok(_) = lock.try_lock() {
+                    interpreter.run(&mut context.as_mut().unwrap())?;
+                } else {
+                    interpreter.context = context;
+                    continue 'control;
+                }
             }
-            index += 1;
         }
-        Ok(())
     }
+    
+    pub fn run(&mut self, context: &mut ContextData) -> Result<bool, Fault> {
+        let mut index = self.code.last().expect("Expected last frame").0;
+        let index_copy = index;
+        let mut bytecode = self.code.last().expect("Expected last frame").1.clone();
+        let result = self.interpret(&mut index, context, &bytecode[index_copy])?;
+        self.code.last_mut().expect("Expected last frame").0 = index;
 
-    async fn run_async(index: &mut usize, context: &mut ContextData, bytecode: &ByteCode) -> Result<bool, Fault> {
-        Self::run(index, context, bytecode).await
+        Ok(result)
     }
+    
 
-    async fn run(index: &mut usize, context: &mut ContextData, bytecode: &ByteCode) -> Result<bool, Fault> {
+    fn interpret(&mut self, index: &mut usize, context: &mut ContextData, bytecode: &ByteCode) -> Result<bool, Fault> {
         match bytecode {
             ByteCode::Halt => return Ok(false),
             ByteCode::NoOp => {}
-            ByteCode::AccessField(index) => Self::access_field(context, *index),
-            ByteCode::AccessTemp(index) => Self::access_temp(*index, context),
-            ByteCode::PushLiteral(literal) => Self::push_literal(context, literal),
-            ByteCode::StoreField(index) => Self::store_field(context, *index),
-            ByteCode::StoreTemp(index) => Self::store_temp(*index, context),
-            ByteCode::SendMsg(arg, msg_index) => Self::send_msg(*arg, msg_index, context).await?,
-            ByteCode::SendSuperMsg(arg, msg_index) => Self::send_super_msg(*arg, msg_index, context).await?,
-            ByteCode::SpecialInstruction(instruction) => return Self::special_instruction(context, instruction),
+            ByteCode::AccessField(index) => self.access_field(context, *index),
+            ByteCode::AccessTemp(index) => self.access_temp(*index, context),
+            ByteCode::PushLiteral(literal) => self.push_literal(context, literal),
+            ByteCode::StoreField(index) => self.store_field(context, *index),
+            ByteCode::StoreTemp(index) => self.store_temp(*index, context),
+            ByteCode::SendMsg(arg, msg_index) => self.send_msg(*arg, msg_index, context)?,
+            ByteCode::SendSuperMsg(arg, msg_index) => self.send_super_msg(*arg, msg_index, context)?,
+            ByteCode::SpecialInstruction(instruction) => return self.special_instruction(context, instruction),
             _ => unimplemented!()
         }
         Ok(true)
     }
 
-    fn access_field(context: &mut ContextData, index: usize) {
+    fn access_field(&self, context: &mut ContextData, index: usize) {
         let value = context.top().expect("Expected value");
         let value = value.borrow();
         let value = value.get_field(index).expect("Expected field").clone();
         context.push(value);
     }
 
-    fn access_temp(index: usize, context: &mut ContextData) {
+    fn access_temp(&self, index: usize, context: &mut ContextData) {
         
         let value = context.arguments[index].clone();
         context.push(value);
     }
 
-    fn push_literal(context: &mut ContextData, literal: &Literal) {
+    fn push_literal(&self, context: &mut ContextData, literal: &Literal) {
         let object = match literal {
             Literal::String(string) => crate::object::create_string(string.to_string()),
             Literal::I8(i) => crate::object::create_i8(*i),
@@ -99,7 +101,7 @@ impl Interpreter {
         context.push(object);
     }
 
-    fn store_field(context: &mut ContextData, index: usize) {
+    fn store_field(&self, context: &mut ContextData, index: usize) {
         let value = context.pop().expect("Expected value");
         let object = context.top().expect("Expected object");
 
@@ -107,12 +109,12 @@ impl Interpreter {
         object.set_field(index, value);
     }
 
-    fn store_temp(index: usize, context: &mut ContextData) {
+    fn store_temp(&self, index: usize, context: &mut ContextData) {
         let value = context.pop().expect("Expected value");
         context.set_argument(index, value);
     }
 
-    async fn send_msg(arg: usize, msg_index: &str, context: &mut ContextData) -> Result<(), Fault>{
+    fn send_msg(&mut self, arg: usize, msg_index: &str, context: &mut ContextData) -> Result<(), Fault>{
         for i in 0..arg {
             let value = context.pop().expect("Expected argument");
             context.set_argument(i, value)
@@ -139,8 +141,9 @@ impl Interpreter {
                     context.attach_receiver(object.clone());
                     let object = block.borrow();
                     let object = object.downcast_ref::<Block>().expect("Expected block");
-                    Self::run_as_task(&object.bytecode, context).await?;
-                    context.pop_frame();
+                    let bytecode = object.bytecode.clone();
+                    self.code.push((0, bytecode));
+                    //context.pop_frame();
 
                 }
             }
@@ -150,7 +153,7 @@ impl Interpreter {
         Ok(())
     }
 
-    async fn send_super_msg(arg: usize, msg_index: &str, context: &mut ContextData) -> Result<(), Fault> {
+    fn send_super_msg(&mut self, arg: usize, msg_index: &str, context: &mut ContextData) -> Result<(), Fault> {
         for i in 0..arg {
             let value = context.pop().expect("Expected argument");
             context.set_argument(i, value)
@@ -180,9 +183,13 @@ impl Interpreter {
                     context.attach_receiver(parent);
                     let object = block.borrow();
                     let object = object.downcast_ref::<Block>().expect("Expected block");
-                    Self::run_as_task(&object.bytecode, context).await?;
-                    context.pop_frame();
+                    let bytecode = object.bytecode.clone();
+                    self.code.push((0, bytecode));
+                    //context.pop_frame();
                 }
+            }
+            if let Some(code) = context.detach_code() {
+                self.code.push((0, code));
             }
         } else {
             return Err(Fault::MethodNotFound(msg_index.to_string()));
@@ -190,20 +197,21 @@ impl Interpreter {
         Ok(())
     }
     
-    fn special_instruction(context: &mut ContextData, instruction: &SpecialInstruction) -> Result<bool, Fault> {
+    fn special_instruction(&self, context: &mut ContextData, instruction: &SpecialInstruction) -> Result<bool, Fault> {
         match instruction {
             SpecialInstruction::DupStack => Self::dup_stack(context),
             SpecialInstruction::DiscardStack => Self::discard_stack(context),
             SpecialInstruction::ReturnStack => Self::return_stack(context),
+            SpecialInstruction::Return => Self::return_(context),
         }
     }
     
     fn dup_stack(context: &mut ContextData) -> Result<bool, Fault> {
         let value = context.top().expect("Expected value").clone();
-         
-        let object = crate::object::object_clone(value);
+        let value_ref = value.borrow();
+        let value = value_ref.duplicate();
 
-        context.push(object);
+        context.push(value);
         Ok(true)
     }
 
@@ -220,5 +228,9 @@ impl Interpreter {
         Ok(false)
     }
 
+    fn return_(context: &mut ContextData) -> Result<bool, Fault> {
+        let value = context.pop().expect("Expected value").clone();
+        Ok(false)
+    }
 
 }

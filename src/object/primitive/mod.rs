@@ -85,35 +85,35 @@ impl Object for NumberObject {
 }
 
 fn number_add(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Number add")))
 }
 
 fn number_subtract(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Number sub")))
 }
 
 fn number_multiply(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Number mul")))
 }
 
 fn number_divide(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Number div")))
 }
 
 fn number_modulo(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Number mod")))
 }
 
 fn number_abs(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Number abs")))
 }
 
 fn number_pow(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Number pow")))
 }
 
 fn number_is_zero(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Number is_zero")))
 }
 
 
@@ -156,11 +156,11 @@ macro_rules! create_type_ops {
                             context.pop();
                             return Ok(Some(original_arg));
                         } else {
-                            return Err(Fault::InvalidType);
+                            return Err(Fault::InvalidType(format!("Number add: Not a number")));
                         }
                     }
                     _ => {
-                        return Err(Fault::InvalidType);
+                        return Err(Fault::InvalidType(format!("Number add: expected {}", stringify!($type))));
                     }
                 }
             }
@@ -202,11 +202,11 @@ macro_rules! create_type_ops {
                             context.pop();
                             return Ok(Some(original_arg));
                         } else {
-                            return Err(Fault::InvalidType);
+                            return Err(Fault::InvalidType(format!("Number sub: Not a number")));
                         }
                     }
                     _ => {
-                        return Err(Fault::InvalidType);
+                        return Err(Fault::InvalidType(format!("Number sub: expected {}", stringify!($type))));
                     }
                 }
             }
@@ -249,11 +249,11 @@ macro_rules! create_type_ops {
                             context.pop();
                             return Ok(Some(original_arg));
                         } else {
-                            return Err(Fault::InvalidType);
+                            return Err(Fault::InvalidType(format!("Number mul: Not a number")));
                         }
                     }
                     _ => {
-                        return Err(Fault::InvalidType);
+                        return Err(Fault::InvalidType(format!("Number mul: expected {}", stringify!($type))));
                     }
                 }
             }
@@ -325,11 +325,11 @@ macro_rules! create_type_ops {
                             context.pop();
                             return Ok(Some(original_arg));
                         } else {
-                            return Err(Fault::InvalidType);
+                            return Err(Fault::InvalidType(format!("Number div: Not a number")));
                         }
                     }
                     _ => {
-                        return Err(Fault::InvalidType);
+                        return Err(Fault::InvalidType(format!("Number add: expected {}", stringify!($type))));
                     }
                 }
             }
@@ -401,11 +401,11 @@ macro_rules! create_type_ops {
                             context.pop();
                             return Ok(Some(original_arg));
                         } else {
-                            return Err(Fault::InvalidType);
+                            return Err(Fault::InvalidType(format!("Number mod: Not a number")));
                         }
                     }
                     _ => {
-                        return Err(Fault::InvalidType);
+                        return Err(Fault::InvalidType(format!("Number mod: expected {}", stringify!($type))));
                     }
                 }
             }
@@ -417,7 +417,7 @@ macro_rules! create_type_ops {
             if let Some(object) = object.downcast_mut::<crate::object::primitive::PrimitiveObject<$type>>() {
                 object.data = object.data.abs();
             } else {
-                return Err(Fault::InvalidType)
+                return Err(Fault::InvalidType(format!("Number abs: expected {}", stringify!($type))))
             }
             Ok(None)
         }
@@ -457,11 +457,11 @@ macro_rules! create_type_ops {
                             context.pop();
                             return Ok(Some(original_arg));
                         } else {
-                            return Err(Fault::InvalidType);
+                            return Err(Fault::InvalidType(format!("Number pow: Not a number")));
                         }
                     }
                     _ => {
-                        return Err(Fault::InvalidType);
+                        return Err(Fault::InvalidType(format!("Number pow: expected {}", stringify!($type))));
                     }
                 }
             }
@@ -477,7 +477,7 @@ macro_rules! create_type_ops {
                     return Ok(Some(crate::object::create_boolean(false)));
                 }
             } else {
-                return Err(Fault::InvalidType)
+                return Err(Fault::InvalidType(format!("Number is_zero: expected {}", stringify!($type))))
             }
         }
     };
@@ -555,11 +555,11 @@ macro_rules! primitive_base_ops {
                                 return Ok(Some(crate::object::create_boolean(false)));
                             }
                         } else {
-                            return Err(Fault::InvalidType);
+                            return Err(Fault::InvalidType(format!("Number equals: Not a number")));
                         }
                     }
                     _ => {
-                        return Err(Fault::InvalidType);
+                        return Err(Fault::InvalidType(format!("Number equals: expected {}", stringify!($type))));
                     }
                 }
             }
@@ -571,7 +571,7 @@ macro_rules! primitive_base_ops {
                 let string = object.data.to_string();
                 return Ok(Some(crate::object::create_string(string)));
             } else {
-                return Err(Fault::InvalidType)
+                return Err(Fault::InvalidType(format!("Number to_string: expected {}", stringify!($type))))
             }
         }
 
@@ -665,11 +665,11 @@ macro_rules! primitive_base_ops {
                                 return Ok(Some(crate::object::create_i8(0)));
                             }
                         } else {
-                            return Err(Fault::InvalidType);
+                            return Err(Fault::InvalidType(format!("Number order: Not a number")));
                         }
                     }
                     _ => {
-                        return Err(Fault::InvalidType);
+                        return Err(Fault::InvalidType(format!("Number order: expected {}", stringify!($type))));
                     }
                 }
             }

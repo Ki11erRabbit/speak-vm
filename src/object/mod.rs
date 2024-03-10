@@ -6,10 +6,8 @@ pub mod log;
 pub mod vector;
 
 use lazy_static::lazy_static;
-use std::sync::Arc;
-use std::cell::RefCell;
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::collections::HashMap;
-use std::rc::Rc;
 use std::sync::RwLock;
 
 use crate::vm::bytecode::ByteCode;
@@ -24,9 +22,9 @@ use self::string::StringObject;
 
 #[derive(Debug)]
 pub enum Fault {
-    NotImplemented,
-    InvalidOperation,
-    InvalidType,
+    NotImplemented(String),
+    InvalidOperation(String),
+    InvalidType(String),
     DivideByZero,
     IO(std::io::Error),
     MethodNotFound(String),
@@ -35,9 +33,9 @@ pub enum Fault {
 impl std::fmt::Display for Fault {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Fault::NotImplemented => write!(f, "Not implemented"),
-            Fault::InvalidOperation => write!(f, "Invalid operation"),
-            Fault::InvalidType => write!(f, "Invalid type"),
+            Fault::NotImplemented(string) => write!(f, "Not implemented: {}", string),
+            Fault::InvalidOperation(string) => write!(f, "Invalid operation: {}", string),
+            Fault::InvalidType(string) => write!(f, "Invalid type: {}", string),
             Fault::DivideByZero => write!(f, "Divide by zero"),
             Fault::IO(e) => write!(f, "IO error: {}", e),
             Fault::MethodNotFound(name) => write!(f, "Method not found: {}", name),
@@ -53,26 +51,26 @@ unsafe impl Send for ObjectBox {}
 
 #[derive(Clone)]
 pub struct ObjectBox {
-    pub data: Rc<RefCell<dyn Object>>,
+    pub data: Arc<Mutex<dyn Object>>,
 }
 
 impl ObjectBox {
     pub fn new<O: Object>(data: O) -> ObjectBox {
         ObjectBox {
-            data: Rc::new(RefCell::new(data))
+            data: Arc::new(Mutex::new(data))
         }
     }
 
-    pub fn borrow(&self) -> std::cell::Ref<dyn Object> {
-        self.data.borrow()
+    pub fn borrow(&self) -> MutexGuard<dyn Object> {
+        self.data.lock().expect("ObjectBox::borrow: lock poisoned")
     }
 
-    pub fn borrow_mut(&self) -> std::cell::RefMut<dyn Object> {
-        self.data.borrow_mut()
+    pub fn borrow_mut(&self) -> MutexGuard<dyn Object> {
+        self.data.lock().expect("ObjectBox::borrow_mut: lock poisoned")
     }
 
     pub fn as_ptr(&self) -> *const () {
-        self.data.as_ptr() as *const ()
+        Arc::as_ptr(&self.data) as *const ()
     }
 }
 
@@ -736,7 +734,7 @@ impl ObjectFactory {
     }
 
     fn make_parent(&self, name: &str) -> Result<ObjectBox, Fault> {
-        self.create_object(self.parents.get(name).ok_or(Fault::InvalidType)?, &[])
+        self.create_object(self.parents.get(name).ok_or(Fault::InvalidType(format!("object not found: {}", name)))?, &[])
     }
     
     
@@ -761,10 +759,10 @@ impl ObjectFactory {
             "Message" => {
                 if arguments.len() == 1 {
                     let message = arguments[0].borrow();
-                    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
+                    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType(format!("argument wasn't a string")))?;
                     Ok(self.create_message(&message.value))
                 } else {
-                    Err(Fault::InvalidType)
+                    Err(Fault::InvalidType(format!("expected 1 argument, got {}", arguments.len())))
                 }
             },
             "Logger" => Ok(self.create_logger()),
@@ -978,6 +976,7 @@ pub struct ContextData {
     pub receiver: Option<ObjectBox>,
     pub arg_count: usize,
     pub vtable: Option<VTable>,
+    pub code: Option<Arc<Vec<ByteCode>>>
 }
 
 impl ContextData {
@@ -988,6 +987,7 @@ impl ContextData {
             receiver: None,
             arg_count: 0,
             vtable: None,
+            code: None,
         }
     }
 
@@ -1054,6 +1054,12 @@ impl ContextData {
         }
         self.arg_count = arguments.len();
     }
+    pub fn attach_code(&mut self, code: Arc<Vec<ByteCode>>) {
+        self.code = Some(code);
+    }
+    pub fn detach_code(&mut self) -> Option<Arc<Vec<ByteCode>>> {
+        self.code.take()
+    }
 }
 
 
@@ -1118,7 +1124,7 @@ impl Object for Context {
 fn context_new(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let string = context.arguments[0].clone();
     let string = string.borrow();
-    let string = string.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
+    let string = string.downcast_ref::<StringObject>().ok_or(Fault::InvalidType(format!("argument was not a string")))?;
     return create_object(&string.value, &context.arguments[1..]);
 }
 

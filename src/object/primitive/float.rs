@@ -41,7 +41,7 @@ impl FloatObject {
         let mut methods = HashMap::new();
         methods.insert(String::from("is_nan"), Arc::new(Method::RustMethod { fun: Box::new(float_is_nan) }));
         methods.insert(String::from("is_infinity"), Arc::new(Method::RustMethod { fun: Box::new(float_is_infinity) }));
-        methods.insert(String::from("is_neg_infinity"), Arc::new(Method::RustMethod { fun: Box::new(float_is_neg_infinity) }));
+        methods.insert(String::from("is_negitive_infinity"), Arc::new(Method::RustMethod { fun: Box::new(float_is_neg_infinity) }));
         methods.insert(String::from("is_finite"), Arc::new(Method::RustMethod { fun: Box::new(float_is_finite) }));
         methods.insert(String::from("is_normal"), Arc::new(Method::RustMethod { fun: Box::new(float_is_normal) }));
         methods.insert(String::from("floor"), Arc::new(Method::RustMethod { fun: Box::new(float_floor) }));
@@ -97,74 +97,74 @@ impl Object for FloatObject {
 }
 
 fn float_is_nan(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Float is_nan")))
 }
 
 fn float_is_infinity(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Float is_infinity")))
 }
 
 fn float_is_neg_infinity(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Float is_negative_infinity")))
 }
 
 fn float_is_finite(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Float is_finite")))
 }
 
 fn float_is_normal(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Float is_normal")))
 }
 
 fn float_floor(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Float floor")))
 }
 
 fn float_ceil(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Float ceil")))
 }
 
 fn float_nat_log(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Float nat_log")))
 }
 
 fn float_log(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Float log")))
 }
 
 fn float_hypotenuse(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Float hypotenuse")))
 }
 
 fn float_sin(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Float sin")))
 }
 
 fn float_cos(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Float cos")))
 }
 
 fn float_tan(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Float tan")))
 }
 
 fn float_arcsin(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Float arcsin")))
 }
 
 fn float_arccos(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Float arccos")))
 }
 
 fn float_arctan(_: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    Err(Fault::NotImplemented)
+    Err(Fault::NotImplemented(format!("Float arctan")))
 }
 
 macro_rules! create_float_ops {
     ($type:ty, $is_nan:ident, $is_inf:ident, $is_neg_inf:ident, $is_finite:ident, $is_normal:ident, $floor:ident, $ceil:ident, $nat_log:ident, $log:ident, $hypotenuse:ident, $sin:ident, $cos:ident, $tan:ident, $arcsin:ident, $arccos:ident, $arctan:ident) => {
         fn $is_nan(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object =  object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Float is_nan: expected {}", stringify!($type))))?;
             if object.data.is_nan() {
                 return Ok(Some(create_boolean(true)))
             } else {
@@ -174,7 +174,7 @@ macro_rules! create_float_ops {
 
         fn $is_inf(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object =  object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Float is_infinity: expected {}", stringify!($type))))?;
             if object.data.is_infinite() {
                 return Ok(Some(create_boolean(true)))
             } else {
@@ -184,7 +184,7 @@ macro_rules! create_float_ops {
 
         fn $is_neg_inf(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object =  object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Float is_negative_infinity: expected {}", stringify!($type))))?;
             if object.data.is_infinite() && object.data.is_sign_negative() {
                 return Ok(Some(create_boolean(true)))
             } else {
@@ -194,7 +194,7 @@ macro_rules! create_float_ops {
 
         fn $is_finite(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object =  object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Float is_finite: expected {}", stringify!($type))))?;
             if object.data.is_finite() {
                 return Ok(Some(create_boolean(true)))
             } else {
@@ -204,7 +204,7 @@ macro_rules! create_float_ops {
 
         fn $is_normal(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object =  object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Float is_normal: expected {}", stringify!($type))))?;
             if object.data.is_normal() {
                 return Ok(Some(create_boolean(true)))
             } else {
@@ -214,87 +214,87 @@ macro_rules! create_float_ops {
 
         fn $floor(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object =  object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Float floor: expected {}", stringify!($type))))?;
             object.data = object.data.floor();
             Ok(None)
         }
 
         fn $ceil(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object =  object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Float ceil: expected {}", stringify!($type))))?;
             object.data = object.data.ceil();
             Ok(None)
         }
 
         fn $nat_log(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object =  object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Float nat_log: expected {}", stringify!($type))))?;
             object.data = object.data.ln();
             Ok(None)
         }
 
         fn $log(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object =  object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Float log: expected {}", stringify!($type))))?;
             let base = context.arguments[0].borrow();
             if let Some(base) = base.downcast_ref::<PrimitiveObject<$type>>() {
                 object.data = object.data.log(base.data)
             } else {
-                return Err(Fault::InvalidType)
+                return Err(Fault::InvalidType(format!("Float log: expected {}", stringify!($type))))
             }
             Ok(None)
         }
         
         fn $hypotenuse(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object =  object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Float hypotenuse: expected {}", stringify!($type))))?;
             let other = context.arguments[0].borrow();
             if let Some(other) = other.downcast_ref::<PrimitiveObject<$type>>() {
                 object.data = object.data.hypot(other.data)
             } else {
-                return Err(Fault::InvalidType)
+                return Err(Fault::InvalidType(format!("Float hypotenuse: expected {}", stringify!($type))))
             }
             Ok(None)
         }
 
         fn $sin(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object =  object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Float sin: expected {}", stringify!($type))))?;
             object.data = object.data.sin();
             Ok(None)
         }
 
         fn $cos(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object =  object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Float cos: expected {}", stringify!($type))))?;
             object.data = object.data.cos();
             Ok(None)
         }
 
         fn $tan(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object =  object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Float tan: expected {}", stringify!($type))))?;
             object.data = object.data.tan();
             Ok(None)
         }
 
         fn $arcsin(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object =  object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Float arcsin: expected {}", stringify!($type))))?;
             object.data = object.data.asin();
             Ok(None)
         }
         
         fn $arccos(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object =  object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Float arccos: expected {}", stringify!($type))))?;
             object.data = object.data.acos();
             Ok(None)
         }
 
         fn $arctan(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
             let mut object =  object.borrow_mut();
-            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType)?;
+            let object = object.downcast_mut::<PrimitiveObject<$type>>().ok_or(Fault::InvalidType(format!("Float arctan: expected {}", stringify!($type))))?;
             object.data = object.data.atan();
             Ok(None)
         }

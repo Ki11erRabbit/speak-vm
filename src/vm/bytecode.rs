@@ -85,6 +85,7 @@ impl ToBinary for ByteCode {
                     SpecialInstruction::DupStack => binary.push(0),
                     SpecialInstruction::DiscardStack => binary.push(1),
                     SpecialInstruction::ReturnStack => binary.push(2),
+                    SpecialInstruction::Return => binary.push(3),
                 }
                 binary
             },
@@ -97,6 +98,7 @@ pub enum SpecialInstruction {
     DupStack,
     DiscardStack,
     ReturnStack,
+    Return,
 }
 
 #[derive(Clone)]

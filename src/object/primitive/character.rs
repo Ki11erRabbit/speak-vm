@@ -81,7 +81,7 @@ fn character_equals(object: ObjectBox, context: &mut ContextData) -> Result<Opti
     let other = other.borrow();
     match (object.downcast_ref::<PrimitiveObject<char>>(), other.downcast_ref::<PrimitiveObject<char>>()) {
         (Some(obj), Some(other)) => Ok(Some(crate::object::create_boolean(obj.data == other.data))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("Char equals: Expected Char")))
     }
 }
 
@@ -89,7 +89,7 @@ fn character_to_string(object: ObjectBox, _: &mut ContextData) -> Result<Option<
     let object = object.borrow();
     match object.downcast_ref::<PrimitiveObject<char>>() {
         Some(obj) => Ok(Some(crate::object::create_string(obj.data.to_string()))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("Char equals: Expected Char")))
     }
 }
 
@@ -105,7 +105,7 @@ fn character_order(object: ObjectBox, context: &mut ContextData) -> Result<Optio
             } else {
                 Ok(Some(crate::object::create_i8(0)))
             },
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("Char equals: Expected Char")))
     }
 }
 
@@ -113,7 +113,7 @@ fn char_to_lowercase(object: ObjectBox, _: &mut ContextData) -> Result<Option<Ob
     let object = object.borrow();
     match object.downcast_ref::<PrimitiveObject<char>>() {
         Some(obj) => Ok(Some(crate::object::create_character(obj.data.to_lowercase().next().unwrap_or(obj.data)))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("Char equals: Expected Char")))
     }
 }
 
@@ -121,7 +121,7 @@ fn char_to_uppercase(object: ObjectBox, _: &mut ContextData) -> Result<Option<Ob
     let object = object.borrow();
     match object.downcast_ref::<PrimitiveObject<char>>() {
         Some(obj) => Ok(Some(crate::object::create_character(obj.data.to_uppercase().next().unwrap_or(obj.data)))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("Char equals: Expected Char")))
     }
 }
 
@@ -129,7 +129,7 @@ fn char_is_lowercase(object: ObjectBox, _: &mut ContextData) -> Result<Option<Ob
     let object = object.borrow();
     match object.downcast_ref::<PrimitiveObject<char>>() {
         Some(obj) => Ok(Some(crate::object::create_boolean(obj.data.is_lowercase()))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("Char equals: Expected Char")))
     }
 }
 
@@ -137,7 +137,7 @@ fn char_is_uppercase(object: ObjectBox, _: &mut ContextData) -> Result<Option<Ob
     let object = object.borrow();
     match object.downcast_ref::<PrimitiveObject<char>>() {
         Some(obj) => Ok(Some(crate::object::create_boolean(obj.data.is_uppercase()))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("Char equals: Expected Char")))
     }
 }
 
@@ -145,7 +145,7 @@ fn char_is_alphabetic(object: ObjectBox, _: &mut ContextData) -> Result<Option<O
     let object = object.borrow();
     match object.downcast_ref::<PrimitiveObject<char>>() {
         Some(obj) => Ok(Some(crate::object::create_boolean(obj.data.is_alphabetic()))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("Char equals: Expected Char")))
     }
 }
 
@@ -153,7 +153,7 @@ fn char_is_alphanumeric(object: ObjectBox, _: &mut ContextData) -> Result<Option
     let object = object.borrow();
     match object.downcast_ref::<PrimitiveObject<char>>() {
         Some(obj) => Ok(Some(crate::object::create_boolean(obj.data.is_alphanumeric()))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("Char equals: Expected Char")))
     }
 }
 
@@ -161,7 +161,7 @@ fn char_is_numeric(object: ObjectBox, _: &mut ContextData) -> Result<Option<Obje
     let object = object.borrow();
     match object.downcast_ref::<PrimitiveObject<char>>() {
         Some(obj) => Ok(Some(crate::object::create_boolean(obj.data.is_numeric()))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("Char equals: Expected Char")))
     }
 }
 
@@ -169,7 +169,7 @@ fn char_is_whitespace(object: ObjectBox, _: &mut ContextData) -> Result<Option<O
     let object = object.borrow();
     match object.downcast_ref::<PrimitiveObject<char>>() {
         Some(obj) => Ok(Some(crate::object::create_boolean(obj.data.is_whitespace()))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("Char equals: Expected Char")))
     }
 }
 

@@ -1,8 +1,8 @@
 pub mod object;
 pub mod vm;
 
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::collections::{HashMap, VecDeque};
+use std::sync::{Arc, Mutex, RwLock, TryLockError};
 
 use object::{init_stack, Class, ContextData, Method};
 use vm::bytecode::Literal;
@@ -15,6 +15,8 @@ use clap::Parser;
 
 #[derive(Parser, Debug)]
 struct Args {
+    #[clap(short, long)]
+    thread_count: Option<usize>,
     #[clap(short, long)]
     server_mode: bool,
     #[clap(short, long)]
@@ -42,7 +44,7 @@ fn load_object_file(file: &str) -> Result<(), Box<dyn std::error::Error>> {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     let args = Args::parse();
-    for file in args.object_files {
+    for file in &args.object_files {
         load_object_file(&file)?;
     }
     let mut context = ContextData::new(init_stack());
@@ -66,12 +68,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ByteCode::SendMsg(1,String::from("println")),
     ];
     let mut methods = HashMap::new();
-    methods.insert("println".to_string(), Arc::new(Method::BytecodeMethod{ block: object::create_block(bytecode) }));
+    methods.insert("main".to_string(), Arc::new(Method::BytecodeMethod{ block: object::create_block(bytecode) }));
     let vtable = object::VTable::new(methods);
-    let overrides = vec![vtable];
-    let vtable = object::VTable::new_empty();
-    let class = Class::new(Some("Logger"), vtable, overrides);
-    object::add_class("hello_world", class);
+    let overrides = vec![];
+    let class = Class::new(Some("Object"), vtable, overrides);
+    object::add_class("Main", class);
 
 
     let instructions = vec![
@@ -89,26 +90,98 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     } else {
         let arguments: Vec<ObjectBox> = args.into_iter().map(|x| object::create_string(x)).collect();
-        for (i, arg) in arguments.into_iter().enumerate() {
-            context.set_argument(i, arg);
+        for (i, arg) in arguments.iter().enumerate() {
+            context.set_argument(i, arg.clone());
         }
         let main = object::create_object("Main", &arguments)?.ok_or("No main object found")?;
         let main = main.borrow();
         let message = object::create_message("main");
         let main_method = main.process_message(message);
         let main_method = main_method.ok_or("No main method found")?;
-        match *main_method {
+        match &*main_method {
             Method::BytecodeMethod { block } => {
                 let block = block.borrow();
                 let block = block.downcast_ref::<object::block::Block>().ok_or("Block not found")?;
-                let block = block.call(&mut context)?;
+                let _ = block.call(&mut context)?;
             }
             _ => unimplemented!()
         }
     }
-    
+    let mut tasks = VecDeque::new();
+    let mut current_tasks: Arc<RwLock<Vec<Arc<Mutex<Interpreter>>>>> = Arc::new(RwLock::new(Vec::new()));
+    let mut next_task = 0;
+    let lock = Arc::new(Mutex::new(()));
 
-    Interpreter::run_normal(&instructions, &mut context)?;
+    let (sender, receiver) = std::sync::mpsc::channel();
+    sender.send(context.detach_code().expect("no main method")).unwrap();
+    let mut start_time = std::time::Instant::now();
+
+    loop {
+        match receiver.try_recv() {
+            Ok(instructions) => {
+                let mut context = ContextData::new(init_stack());
+                context.attach_code(instructions);
+                let interpreter = Interpreter::new(context);
+                tasks.push_back(Arc::new(Mutex::new(interpreter)));
+                next_task += 1;
+            }
+            Err(std::sync::mpsc::TryRecvError::Empty) => {
+            }
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                break;
+            }
+        }
+        if start_time.elapsed().as_millis() < 100 {
+            continue;
+        }
+
+        if let Ok(guard) = lock.lock() {
+            let mut current_tasks = current_tasks.write().expect("Could not write to current tasks");
+            for i in 0..next_task {
+                let mut task = tasks.pop_front();
+                if current_tasks.len() <= i {
+                    if let Some(task) = task {
+                        current_tasks.push(task);
+                        continue;
+                    }
+                }
+                let current_task = current_tasks[i].clone();
+                // Here false is back and true is front
+                let mut back_or_front = true;
+                match current_task.try_lock() {
+                    Ok(_) => {
+                        back_or_front = false;
+                    }
+                    Err(TryLockError::WouldBlock) => {
+
+                    }
+                    Err(x) => {
+                        eprintln!("{:?}", x);
+                        return Ok(())
+                    }
+                };
+                if back_or_front {
+                    if let Some(task) = task {
+                        tasks.push_front(task);
+                    }
+                } else {
+                    drop(current_task);
+                    if let Some(ref mut task) = task {
+                        std::mem::swap(task, &mut current_tasks[i]);
+                    }
+                    if let Some(task) = task {
+                        tasks.push_back(task);
+                    }
+                }
+            };
+
+            drop(guard);
+        }
+        start_time = std::time::Instant::now();
+        
+    }
+
+    //Interpreter::run_normal(&instructions, &mut context)?;
 
 
 

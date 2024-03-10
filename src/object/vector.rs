@@ -82,37 +82,37 @@ impl Object for VectorObject {
 fn vector_get(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let index = context.arguments[0].clone();
     let index = index.borrow();
-    let index = index.downcast_ref::<PrimitiveObject<u64>>().ok_or(Fault::InvalidType)?;
+    let index = index.downcast_ref::<PrimitiveObject<u64>>().ok_or(Fault::InvalidType(format!("Vector get: Expected u64")))?;
     let index = index.data as usize;
     let vector = object.borrow();
-    let vector = vector.downcast_ref::<VectorObject>().ok_or(Fault::InvalidType)?;
+    let vector = vector.downcast_ref::<VectorObject>().ok_or(Fault::InvalidType(format!("Vector get: Expected Vector")))?;
     Ok(Some(vector.get_field(index).unwrap()))
 }
 
 fn vector_set(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let index = context.arguments[0].clone();
     let index = index.borrow();
-    let index = index.downcast_ref::<PrimitiveObject<u64>>().ok_or(Fault::InvalidType)?;
+    let index = index.downcast_ref::<PrimitiveObject<u64>>().ok_or(Fault::InvalidType(format!("Vector set: Expected u64")))?;
     let index = index.data as usize;
     let value = context.arguments[1].clone();
     let mut vector = object.borrow_mut();
-    let vector = vector.downcast_mut::<VectorObject>().ok_or(Fault::InvalidType)?;
+    let vector = vector.downcast_mut::<VectorObject>().ok_or(Fault::InvalidType(format!("Vector set: Expected Vector")))?;
     vector.set_field(index, value);
     Ok(None)
 }
 
 fn vector_length(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let vector = object.borrow();
-    let vector = vector.downcast_ref::<VectorObject>().ok_or(Fault::InvalidType)?;
+    let vector = vector.downcast_ref::<VectorObject>().ok_or(Fault::InvalidType(format!("Vector length: Expected Vector")))?;
     Ok(Some(super::create_u64(vector.size().unwrap() as u64)))
 }
 
 fn vector_map(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let function = context.arguments[0].clone();
     let function = function.borrow();
-    let function = function.downcast_ref::<Block>().ok_or(Fault::InvalidType)?;
+    let function = function.downcast_ref::<Block>().ok_or(Fault::InvalidType(format!("Vector map: Expected Block")))?;
     let vector = object.borrow();
-    let vector = vector.downcast_ref::<VectorObject>().ok_or(Fault::InvalidType)?;
+    let vector = vector.downcast_ref::<VectorObject>().ok_or(Fault::InvalidType(format!("Vector map: Expected map")))?;
     let mut new_vector = Vec::new();
     for item in vector.value.iter() {
         context.set_argument(0, item.clone());
@@ -128,9 +128,9 @@ fn vector_map(object: ObjectBox, context: &mut ContextData) -> Result<Option<Obj
 fn vector_fold(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let function = context.arguments[0].clone();
     let function = function.borrow();
-    let function = function.downcast_ref::<Block>().ok_or(Fault::InvalidType)?;
+    let function = function.downcast_ref::<Block>().ok_or(Fault::InvalidType(format!("Vector fold: Expected Block")))?;
     let vector = object.borrow();
-    let vector = vector.downcast_ref::<VectorObject>().ok_or(Fault::InvalidType)?;
+    let vector = vector.downcast_ref::<VectorObject>().ok_or(Fault::InvalidType(format!("Vector fold: Expected Vector")))?;
     let mut result = context.arguments[1].clone();
     for item in vector.value.iter() {
         context.set_argument(0, result.clone());
@@ -143,7 +143,7 @@ fn vector_fold(object: ObjectBox, context: &mut ContextData) -> Result<Option<Ob
 
 fn vector_sort(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let mut vector = object.borrow_mut();
-    let vector = vector.downcast_mut::<VectorObject>().ok_or(Fault::InvalidType)?;
+    let vector = vector.downcast_mut::<VectorObject>().ok_or(Fault::InvalidType(format!("Vector sort: Expected Vector")))?;
     vector.value.sort_by(|a, b| {
         let a_ = a.borrow();
         let method = a_.process_message(super::create_message("order")).expect("Expected order method");
@@ -174,14 +174,14 @@ fn vector_sort(object: ObjectBox, context: &mut ContextData) -> Result<Option<Ob
 
 fn vector_concat(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let vector = object.borrow();
-    let vector = vector.downcast_ref::<VectorObject>().ok_or(Fault::InvalidType)?;
+    let vector = vector.downcast_ref::<VectorObject>().ok_or(Fault::InvalidType(format!("Vector concat: Expected Vector")))?;
     let mut new_vector = Vec::new();
     for item in vector.value.iter() {
         new_vector.push(item.clone());
     }
     for item in context.arguments.iter() {
         let item = item.borrow();
-        let item = item.downcast_ref::<VectorObject>().ok_or(Fault::InvalidType)?;
+        let item = item.downcast_ref::<VectorObject>().ok_or(Fault::InvalidType(format!("Vector concat: Expected Vector")))?;
         for item in item.value.iter() {
             new_vector.push(item.clone());
         }

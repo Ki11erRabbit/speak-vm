@@ -94,7 +94,7 @@ impl Object for Logger {
 fn log_println(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let message = context.arguments[0].clone();
     let message = message.borrow();
-    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
+    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType(format!("Logger println: argument was not a string")))?;
     println!("{}", message.value);
     Ok(None)
 }
@@ -102,7 +102,7 @@ fn log_println(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectB
 fn log_print(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let message = context.arguments[0].clone();
     let message = message.borrow();
-    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
+    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType(format!("Logger print: argument was not a string")))?;
     print!("{}", message.value);
     std::io::stdout().flush().map_err(|x| Fault::IO(x))?;
     Ok(None)
@@ -111,7 +111,7 @@ fn log_print(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox
 fn log_eprintln(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let message = context.arguments[0].clone();
     let message = message.borrow();
-    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
+    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType(format!("Logger eprintln: argument was not a string")))?;
     println!("{}", message.value);
     Ok(None)
 }
@@ -119,7 +119,7 @@ fn log_eprintln(_: ObjectBox, context: &mut ContextData) -> Result<Option<Object
 fn log_eprint(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let message = context.arguments[0].clone();
     let message = message.borrow();
-    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
+    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType(format!("Logger eprint: argument was not a string")))?;
     print!("{}", message.value);
     std::io::stdout().flush().map_err(|x| Fault::IO(x))?;
     Ok(None)
@@ -128,7 +128,7 @@ fn log_eprint(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBo
 fn log_info(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let message = context.arguments[0].clone();
     let message = message.borrow();
-    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
+    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType(format!("Logger info: argument was not a string")))?;
     info!("{}", message.value);
     Ok(None)
 }
@@ -136,7 +136,7 @@ fn log_info(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>
 fn log_trace(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let message = context.arguments[0].clone();
     let message = message.borrow();
-    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
+    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType(format!("Logger trace: argument was not a string")))?;
     trace!("{}", message.value);
     Ok(None)
 }
@@ -144,7 +144,7 @@ fn log_trace(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox
 fn log_warn(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let message = context.arguments[0].clone();
     let message = message.borrow();
-    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
+    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType(format!("Logger warn: argument was not a string")))?;
     warn!("{}", message.value);
     Ok(None)
 }
@@ -152,7 +152,7 @@ fn log_warn(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>
 fn log_error(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let message = context.arguments[0].clone();
     let message = message.borrow();
-    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
+    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType(format!("Logger error: argument was not a string")))?;
     error!("{}", message.value);
     Ok(None)
 }
@@ -160,7 +160,7 @@ fn log_error(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox
 fn log_debug(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let message = context.arguments[0].clone();
     let message = message.borrow();
-    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType)?;
+    let message = message.downcast_ref::<StringObject>().ok_or(Fault::InvalidType(format!("Logger debug: argument was not a string")))?;
     debug!("{}", message.value);
     Ok(None)
 }

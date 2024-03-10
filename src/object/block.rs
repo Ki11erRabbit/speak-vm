@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use crate::object::{Object, ObjectBox};
 use crate::object::Fault;
-use crate::vm::interpreter::Interpreter;
 use crate::object::Method;
 use std::sync::Arc;
 
@@ -17,7 +16,7 @@ use super::{ContextData, VTable};
 pub struct Block {
     super_object: ObjectBox,
     vtable: VTable,
-    pub bytecode: Vec<ByteCode>,
+    pub bytecode: Arc<Vec<ByteCode>>,
     captures: Vec<ObjectBox>,
 }
 
@@ -25,7 +24,7 @@ pub struct Block {
 impl Block {
     pub fn make_object(parent: ObjectBox,
                        bytecode: Vec<ByteCode>) -> ObjectBox {
-        ObjectBox::new(Block {super_object: parent, bytecode, vtable: VTable::new_empty(), captures: Vec::new()})
+        ObjectBox::new(Block {super_object: parent, bytecode: Arc::new(bytecode), vtable: VTable::new_empty(), captures: Vec::new()})
     }
     pub fn make_vtable() -> VTable {
         let mut methods = HashMap::new();
@@ -33,7 +32,7 @@ impl Block {
         VTable::new(methods)
     }
     pub fn call(&self, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-        Interpreter::run_normal(&self.bytecode, context)?;
+        context.attach_code(self.bytecode.clone());
         Ok(None)
     }
 }
@@ -55,7 +54,7 @@ impl Object for Block {
         None
     }
     fn duplicate(&self) -> ObjectBox {
-        let block = Block::make_object(self.super_object.borrow().duplicate(), self.bytecode.clone());
+        let block = Block::make_object(self.super_object.borrow().duplicate(), self.bytecode.clone().to_vec());
         let mut blk = block.borrow_mut();
         blk.initialize(Vec::new(), self.vtable.clone());
         drop(blk);
@@ -72,6 +71,6 @@ impl Object for Block {
 fn value(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let object = object.borrow();
     let object = object.downcast_ref::<Block>().expect("Expected block");
-    Interpreter::run_normal(&object.bytecode, context)?;
+    let _ = object.call(context);
     Ok(None)
 }

@@ -104,7 +104,7 @@ fn string_equals(object: ObjectBox, context: &mut ContextData) -> Result<Option<
     let other = other.borrow();
     match (object.downcast_ref::<StringObject>(), other.downcast_ref::<StringObject>()) {
         (Some(obj), Some(other)) => Ok(Some(crate::object::create_boolean(obj.value == other.value))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("String equals: Expected String")))
     }
 }
 
@@ -112,7 +112,7 @@ fn string_to_string(object: ObjectBox, _: &mut ContextData) -> Result<Option<Obj
     let object = object.borrow();
     match object.downcast_ref::<StringObject>() {
         Some(obj) => Ok(Some(crate::object::create_string(obj.value.clone()))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("String equals: Expected String")))
     }
 }
 
@@ -122,7 +122,7 @@ fn string_order(object: ObjectBox, context: &mut ContextData) -> Result<Option<O
     let other = other.borrow();
     match (object.downcast_ref::<StringObject>(), other.downcast_ref::<StringObject>()) {
         (Some(obj), Some(other)) => Ok(Some(crate::object::create_boolean(obj.value < other.value))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("String equals: Expected String")))
     }
 }
 
@@ -130,7 +130,7 @@ fn string_length(object: ObjectBox, _: &mut ContextData) -> Result<Option<Object
     let object = object.borrow();
     match object.downcast_ref::<StringObject>() {
         Some(obj) => Ok(Some(crate::object::create_u64(obj.value.len() as u64))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("String equals: Expected String")))
     }
 }
 
@@ -138,7 +138,7 @@ fn string_to_lowercase(object: ObjectBox, _: &mut ContextData) -> Result<Option<
     let object = object.borrow();
     match object.downcast_ref::<StringObject>() {
         Some(obj) => Ok(Some(crate::object::create_string(obj.value.to_lowercase()))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("String equals: Expected String")))
     }
 }
 
@@ -146,7 +146,7 @@ fn string_to_uppercase(object: ObjectBox, _: &mut ContextData) -> Result<Option<
     let object = object.borrow();
     match object.downcast_ref::<StringObject>() {
         Some(obj) => Ok(Some(crate::object::create_string(obj.value.to_uppercase()))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("String equals: Expected String")))
     }
 }
 
@@ -154,7 +154,7 @@ fn string_trim(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBo
     let object = object.borrow();
     match object.downcast_ref::<StringObject>() {
         Some(obj) => Ok(Some(crate::object::create_string(obj.value.trim().to_string()))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("String equals: Expected String")))
     }
 }
 
@@ -162,7 +162,7 @@ fn string_trim_start(object: ObjectBox, _: &mut ContextData) -> Result<Option<Ob
     let object = object.borrow();
     match object.downcast_ref::<StringObject>() {
         Some(obj) => Ok(Some(crate::object::create_string(obj.value.trim_start().to_string()))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("String equals: Expected String")))
     }
 }
 
@@ -170,7 +170,7 @@ fn string_trim_end(object: ObjectBox, _: &mut ContextData) -> Result<Option<Obje
     let object = object.borrow();
     match object.downcast_ref::<StringObject>() {
         Some(obj) => Ok(Some(crate::object::create_string(obj.value.trim_end().to_string()))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("String equals: Expected String")))
     }
 }
 
@@ -180,7 +180,7 @@ fn string_contains(object: ObjectBox, context: &mut ContextData) -> Result<Optio
     let other = other.borrow();
     match (object.downcast_ref::<StringObject>(), other.downcast_ref::<StringObject>()) {
         (Some(obj), Some(other)) => Ok(Some(crate::object::create_boolean(obj.value.contains(&other.value)))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("String equals: Expected String")))
     }
 }
 
@@ -192,7 +192,7 @@ fn string_to_vector(object: ObjectBox, context: &mut ContextData) -> Result<Opti
             context.pop();
             Ok(Some(crate::object::create_vector(vec)))
         },
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("String equals: Expected String")))
     }
 }
 
@@ -205,7 +205,7 @@ fn string_split(object: ObjectBox, context: &mut ContextData) -> Result<Option<O
             let vec: Vec<ObjectBox> = obj.value.split(&separator.value).map(|s| crate::object::create_string(s.to_string())).collect();
             Ok(Some(crate::object::create_vector(vec)))
         },
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("String equals: Expected String")))
     }
 }
 
@@ -222,7 +222,7 @@ fn string_get(object: ObjectBox, context: &mut ContextData) -> Result<Option<Obj
                 Ok(None)
             }
         },
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("String equals: Expected String")))
     }
 }
 
@@ -244,7 +244,7 @@ fn string_set(object: ObjectBox, context: &mut ContextData) -> Result<Option<Obj
                 Ok(None)
             }
         },
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("String equals: Expected String")))
     }
 }
 
@@ -257,7 +257,7 @@ fn string_push(object: ObjectBox, context: &mut ContextData) -> Result<Option<Ob
             obj.value.push(value.data);
             Ok(None)
         },
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("String equals: Expected String")))
     }
 }
 
@@ -271,7 +271,7 @@ fn string_pop(object: ObjectBox, _: &mut ContextData) -> Result<Option<ObjectBox
                 Ok(None)
             }
         },
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("String equals: Expected String")))
     }
 }
 
@@ -284,7 +284,7 @@ fn string_push_char(object: ObjectBox, context: &mut ContextData) -> Result<Opti
             obj.value.push(value.data);
             Ok(None)
         },
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("String equals: Expected String")))
     }
 }
 
@@ -294,7 +294,7 @@ fn string_concat(object: ObjectBox, context: &mut ContextData) -> Result<Option<
     let other = other.borrow();
     match (object.downcast_ref::<StringObject>(), other.downcast_ref::<StringObject>()) {
         (Some(obj), Some(other)) => Ok(Some(crate::object::create_string(obj.value.clone() + &other.value))),
-        _ => Err(Fault::InvalidType)
+        _ => Err(Fault::InvalidType(format!("String equals: Expected String")))
     }
 }
 
