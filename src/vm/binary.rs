@@ -359,7 +359,7 @@ pub struct ProtoBlockTable {
 
 impl ProtoBlockTable {
     pub fn into_block_table(self, string_table: &StringTable) -> BlockTable {
-        let mut block_table = BlockTable { blocks: BTreeMap::new(), block_to_idx: HashMap::new() };
+        let mut block_table = BlockTable { blocks: BTreeMap::new() };
         let _ = self.blocks.into_iter().map(|(idx, bytecode)| {
             let bytecode = bytecode.into_iter().map(|bytecode| bytecode.into_bytecode(string_table, &block_table)).collect();
             block_table.blocks.insert(idx, bytecode);
@@ -531,7 +531,7 @@ impl ProtoLiteral {
 }
 
 impl ToBinary for ProtoLiteral {
-    fn to_binary(&self, string_table: Option<&mut StringTable>) -> Vec<u8> {
+    fn to_binary(&self, _string_table: Option<&mut StringTable>) -> Vec<u8> {
         let mut binary = vec![];
         match self {
             ProtoLiteral::String(idx) => {
@@ -683,7 +683,7 @@ impl ToBinary for StringTable {
 
 pub struct BlockTable {
     blocks: BTreeMap<usize, Vec<ByteCode>>,
-    block_to_idx: HashMap<Vec<ByteCode>, usize>,
+    //block_to_idx: HashMap<Vec<ByteCode>, usize>,
 }
 
 impl ToBinary for BlockTable {

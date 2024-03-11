@@ -1,6 +1,5 @@
 use super::{Method, ObjectBox};
 use std::collections::HashMap;
-use std::{cell::RefCell, rc::Rc};
 use crate::object::{Object, VTable};
 use std::sync::Arc;
 use super::Fault;

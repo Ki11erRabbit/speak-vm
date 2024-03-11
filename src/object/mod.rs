@@ -465,7 +465,7 @@ impl crate::vm::binary::ToBinary for Class {
         self.methods.to_binary(Some(string_table));
 
         output.extend_from_slice(self.overrides.len().to_binary(None).as_slice());
-        for (i, override_) in self.overrides.iter().enumerate().rev() {
+        for override_ in self.overrides.iter().rev() {
             override_.to_binary(Some(string_table));
         }
 

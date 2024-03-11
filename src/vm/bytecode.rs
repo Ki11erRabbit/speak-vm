@@ -81,12 +81,7 @@ impl ToBinary for ByteCode {
             },
             ByteCode::SpecialInstruction(inst) => {
                 let mut binary = vec![10];
-                match inst {
-                    SpecialInstruction::DupStack => binary.push(0),
-                    SpecialInstruction::DiscardStack => binary.push(1),
-                    SpecialInstruction::ReturnStack => binary.push(2),
-                    SpecialInstruction::Return => binary.push(3),
-                }
+                binary.extend(inst.to_binary(None));
                 binary
             },
         }
@@ -99,6 +94,57 @@ pub enum SpecialInstruction {
     DiscardStack,
     ReturnStack,
     Return,
+    PopTrueSkip(usize),
+    PopFalseSkip(usize),
+    PopTrueBackSkip(usize),
+    PopFalseBackSkip(usize),
+    Skip(usize),
+    BackSkip(usize),
+}
+
+impl ToBinary for SpecialInstruction {
+    fn to_binary(&self, _string_table: Option<&mut super::binary::StringTable>) -> Vec<u8> {
+        let mut output = Vec::new();
+        match self {
+            SpecialInstruction::DupStack => {
+                output.push(0);
+            },
+            SpecialInstruction::DiscardStack => {
+                output.push(1);
+            },
+            SpecialInstruction::ReturnStack => {
+                output.push(2);
+            },
+            SpecialInstruction::Return => {
+                output.push(3);
+            },
+            SpecialInstruction::PopTrueSkip(idx) => {
+                output.push(4);
+                output.extend(idx.to_binary(None));
+            },
+            SpecialInstruction::PopFalseSkip(idx) => {
+                output.push(5);
+                output.extend(idx.to_binary(None));
+            },
+            SpecialInstruction::PopTrueBackSkip(idx) => {
+                output.push(6);
+                output.extend(idx.to_binary(None));
+            },
+            SpecialInstruction::PopFalseBackSkip(idx) => {
+                output.push(7);
+                output.extend(idx.to_binary(None));
+            },
+            SpecialInstruction::Skip(idx) => {
+                output.push(8);
+                output.extend(idx.to_binary(None));
+            },
+            SpecialInstruction::BackSkip(idx) => {
+                output.push(9);
+                output.extend(idx.to_binary(None));
+            },
+        }
+        output
+    }
 }
 
 #[derive(Clone)]

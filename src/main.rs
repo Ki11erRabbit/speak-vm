@@ -113,36 +113,67 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut next_task = 0;
     let lock = Arc::new(Mutex::new(()));
 
+    let mut handles = Vec::new();
+    for _ in 0..4 {
+        let lock = lock.clone();
+        let current_tasks = current_tasks.clone();
+        let handle = std::thread::Builder::new().name(format!("core {}", next_task)).spawn(move || {
+            let index = next_task;
+            let interpreters = current_tasks;
+            let lock = lock;
+            Interpreter::run_loop(index, interpreters, lock);
+        });
+        next_task += 1;
+        handles.push(handle);
+    }
+
     let (sender, receiver) = std::sync::mpsc::channel();
-    sender.send(context.detach_code().expect("no main method")).unwrap();
+    let code = context.detach_code().expect("no main method");
+    sender.send(code.clone()).unwrap();
+    sender.send(code.clone()).unwrap();
+    sender.send(code.clone()).unwrap();
+    sender.send(code.clone()).unwrap();
+    sender.send(code.clone()).unwrap();
+    sender.send(code.clone()).unwrap();
+    sender.send(code.clone()).unwrap();
+    sender.send(code.clone()).unwrap();
+    sender.send(code.clone()).unwrap();
+    sender.send(code.clone()).unwrap();
+    sender.send(code.clone()).unwrap();
     let mut start_time = std::time::Instant::now();
 
-    loop {
-        match receiver.try_recv() {
-            Ok(instructions) => {
-                let mut context = ContextData::new(init_stack());
-                context.attach_code(instructions);
-                let interpreter = Interpreter::new(context);
-                tasks.push_back(interpreter);
-                let lock = lock.clone();
-                let current_tasks = current_tasks.clone();
-                let _ = std::thread::Builder::new().name(format!("core {}", next_task)).spawn(move || {
-                    let index = next_task;
-                    let interpreters = current_tasks;
-                    let lock = lock;
-                    Interpreter::run_loop(index, interpreters, lock);
-                });
-                next_task += 1;
-            }
-            Err(std::sync::mpsc::TryRecvError::Empty) => {
-            }
-            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                break;
+    let mut start = true;
+
+    'main: loop {
+        loop {
+            match receiver.try_recv() {
+                Ok(instructions) => {
+                    let mut context = ContextData::new(init_stack());
+                    context.attach_code(instructions);
+                    let interpreter = Interpreter::new(context);
+                    tasks.push_back(interpreter);
+                    /*let lock = lock.clone();
+                    let current_tasks = current_tasks.clone();
+                    let _ = std::thread::Builder::new().name(format!("core {}", next_task)).spawn(move || {
+                        let index = next_task;
+                        let interpreters = current_tasks;
+                        let lock = lock;
+                        Interpreter::run_loop(index, interpreters, lock);
+                    });
+                    next_task += 1;*/
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    break;
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    break 'main;
+                }
             }
         }
-        if start_time.elapsed().as_millis() < 100 {
+        if start_time.elapsed().as_millis() < 100 && !start {
             continue;
         }
+        //eprintln!("Context Switch");
 
         if let Ok(guard) = lock.lock() {
             let mut current_tasks = current_tasks.write().expect("Could not write to current tasks");
@@ -154,12 +185,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         continue;
                     }
                 }
-                match current_tasks[i].try_lock() {
+                let Some(current_task) = current_tasks.get(i) else {
+                    continue;
+                };
+                match current_task.try_lock() {
                     Ok(mut current_task) => {
-                        if let Some(ref mut task) = task {
-                            std::mem::swap(task, current_task.as_mut().unwrap());
-                            continue;
+                        if let Some(ref mut current_task) = *current_task {
+                            if let Some(ref mut task) = task {
+                                std::mem::swap(task, current_task);
+                                continue;
+                            }
+                        } else if current_task.is_none() {
+                            if let Some(task) = task {
+                                let _ = current_task.insert(task);
+                                continue;
+                            }
                         }
+                                            
                     }
                     Err(TryLockError::WouldBlock) => {
                         if let Some(task) = task {
@@ -172,7 +214,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         return Ok(())
                     }
                 };
-                let current_task = current_tasks[i].clone();
+                let Some(current_task) = current_tasks.get(i).clone() else {
+                    continue;
+                };
                 // Here false is back and true is front
                 let mut back_or_front = true;
                 match current_task.try_lock() {
@@ -192,12 +236,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         tasks.push_front(task);
                     }
                 } else {
-                    drop(current_task);
                     match current_tasks[i].try_lock() {
                         Ok(mut current_task) => {
                             if let Some(ref mut task) = task {
-                                std::mem::swap(task, current_task.as_mut().unwrap());
-                                continue;
+                                if let Some(ref mut current_task) = *current_task {
+                                    std::mem::swap(task, current_task);
+                                    continue;
+                                }
                             }
                         }
                         Err(TryLockError::WouldBlock) => {
@@ -228,13 +273,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             for i in indices.into_iter().rev() {
                 current_tasks.remove(i);
             }
-            if current_tasks.len() == 0 {
+            if current_tasks.len() == 0 && tasks.len() == 0 {
                 break;
             }
 
             drop(guard);
         }
         start_time = std::time::Instant::now();
+        start = false;
         
     }
 

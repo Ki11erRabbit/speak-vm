@@ -87,7 +87,7 @@ impl Interpreter {
             ByteCode::StoreTemp(index) => self.store_temp(*index, context),
             ByteCode::SendMsg(arg, msg_index) => self.send_msg(*arg, msg_index, context)?,
             ByteCode::SendSuperMsg(arg, msg_index) => self.send_super_msg(*arg, msg_index, context)?,
-            ByteCode::SpecialInstruction(instruction) => return self.special_instruction(context, instruction),
+            ByteCode::SpecialInstruction(instruction) => return self.special_instruction(index, context, instruction),
             _ => unimplemented!()
         }
         Ok(true)
@@ -222,12 +222,24 @@ impl Interpreter {
         Ok(())
     }
     
-    fn special_instruction(&self, context: &mut ContextData, instruction: &SpecialInstruction) -> Result<bool, Fault> {
+    fn special_instruction(&self, index: &mut usize, context: &mut ContextData, instruction: &SpecialInstruction) -> Result<bool, Fault> {
         match instruction {
             SpecialInstruction::DupStack => Self::dup_stack(context),
             SpecialInstruction::DiscardStack => Self::discard_stack(context),
             SpecialInstruction::ReturnStack => Self::return_stack(context),
             SpecialInstruction::Return => Self::return_(context),
+            SpecialInstruction::PopTrueSkip(skip) => Self::pop_true_skip(context, index, *skip),
+            SpecialInstruction::PopFalseSkip(skip) => Self::pop_false_skip(context, index, *skip),
+            SpecialInstruction::PopTrueBackSkip(skip) => Self::pop_true_back_skip(context, index, *skip),
+            SpecialInstruction::PopFalseBackSkip(skip) => Self::pop_false_back_skip(context, index, *skip),
+            SpecialInstruction::Skip(skip) => {
+                *index += skip;
+                Ok(true)
+            },
+            SpecialInstruction::BackSkip(skip) => {
+                *index -= skip;
+                Ok(true)
+            }
         }
     }
     
@@ -254,8 +266,48 @@ impl Interpreter {
     }
 
     fn return_(context: &mut ContextData) -> Result<bool, Fault> {
-        let value = context.pop().expect("Expected value").clone();
+        //let value = context.pop().expect("Expected value").clone();
+        let _ = context.pop_frame();
         Ok(false)
     }
+    
+    fn pop_true_skip(context: &mut ContextData, index: &mut usize, skip: usize) -> Result<bool, Fault> {
+        let value = context.pop().expect("Expected value").clone();
+        let value = value.borrow();
+        let value = value.downcast_ref::<crate::object::primitive::PrimitiveObject<bool>>().ok_or(Fault::InvalidType(String::from("Expected boolean")))?;
+        if value.data {
+            *index += skip;
+        }
+        Ok(true)
+    }
 
+    fn pop_false_skip(context: &mut ContextData, index: &mut usize, skip: usize) -> Result<bool, Fault> {
+        let value = context.pop().expect("Expected value").clone();
+        let value = value.borrow();
+        let value = value.downcast_ref::<crate::object::primitive::PrimitiveObject<bool>>().ok_or(Fault::InvalidType(String::from("Expected boolean")))?;
+        if !value.data {
+            *index += skip;
+        }
+        Ok(true)
+    }
+
+    fn pop_true_back_skip(context: &mut ContextData, index: &mut usize, skip: usize) -> Result<bool, Fault> {
+        let value = context.pop().expect("Expected value").clone();
+        let value = value.borrow();
+        let value = value.downcast_ref::<crate::object::primitive::PrimitiveObject<bool>>().ok_or(Fault::InvalidType(String::from("Expected boolean")))?;
+        if value.data {
+            *index -= skip;
+        }
+        Ok(true)
+    }
+
+    fn pop_false_back_skip(context: &mut ContextData, index: &mut usize, skip: usize) -> Result<bool, Fault> {
+        let value = context.pop().expect("Expected value").clone();
+        let value = value.borrow();
+        let value = value.downcast_ref::<crate::object::primitive::PrimitiveObject<bool>>().ok_or(Fault::InvalidType(String::from("Expected boolean")))?;
+        if !value.data {
+            *index -= skip;
+        }
+        Ok(true)
+    }
 }
