@@ -111,12 +111,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut tasks: VecDeque<Interpreter> = VecDeque::new();
     let current_tasks: Arc<RwLock<Vec<Arc<Mutex<Option<Interpreter>>>>>> = Arc::new(RwLock::new(Vec::new()));
     let mut next_task = 0;
-    let lock = Arc::new(Mutex::new(()));
 
     let mut handles = Vec::new();
+    let mut locks = Vec::new();
     for _ in 0..4 {
-        let lock = lock.clone();
+        let lock = Arc::new(Mutex::new(()));
         let current_tasks = current_tasks.clone();
+        locks.push(lock.clone());
+        let lock = lock.clone();
         let handle = std::thread::Builder::new().name(format!("core {}", next_task)).spawn(move || {
             let index = next_task;
             let interpreters = current_tasks;
@@ -174,34 +176,77 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             continue;
         }
         //eprintln!("Context Switch");
+        
+        let locked_locks = locks.iter().map(|x| x.lock().unwrap()).collect::<Vec<_>>();
 
-        if let Ok(guard) = lock.lock() {
-            let mut current_tasks = current_tasks.write().expect("Could not write to current tasks");
-            for i in 0..next_task {
-                let mut task = tasks.pop_front();
-                if current_tasks.len() <= i {
+        let mut current_tasks = current_tasks.write().expect("Could not write to current tasks");
+        for i in 0..next_task {
+            let mut task = tasks.pop_front();
+            if current_tasks.len() <= i {
+                if let Some(task) = task {
+                    current_tasks.push(Arc::new(Mutex::new(Some(task))));
+                    continue;
+                }
+            }
+            let Some(current_task) = current_tasks.get(i) else {
+                continue;
+            };
+            match current_task.try_lock() {
+                Ok(mut current_task) => {
+                    if let Some(ref mut current_task) = *current_task {
+                        if let Some(ref mut task) = task {
+                            std::mem::swap(task, current_task);
+                            continue;
+                        }
+                    } else if current_task.is_none() {
+                        if let Some(task) = task {
+                            let _ = current_task.insert(task);
+                            continue;
+                        }
+                    }
+                                        
+                }
+                Err(TryLockError::WouldBlock) => {
                     if let Some(task) = task {
-                        current_tasks.push(Arc::new(Mutex::new(Some(task))));
+                        tasks.push_front(task);
                         continue;
                     }
                 }
-                let Some(current_task) = current_tasks.get(i) else {
-                    continue;
-                };
-                match current_task.try_lock() {
+                Err(x) => {
+                    eprintln!("{:?}", x);
+                    return Ok(())
+                }
+            };
+            let Some(current_task) = current_tasks.get(i).clone() else {
+                continue;
+            };
+            // Here false is back and true is front
+            let mut back_or_front = true;
+            match current_task.try_lock() {
+                Ok(_) => {
+                    back_or_front = false;
+                }
+                Err(TryLockError::WouldBlock) => {
+
+                }
+                Err(x) => {
+                    eprintln!("{:?}", x);
+                    return Ok(())
+                }
+            };
+            if back_or_front {
+                if let Some(task) = task {
+                    tasks.push_front(task);
+                }
+            } else {
+                match current_tasks[i].try_lock() {
                     Ok(mut current_task) => {
-                        if let Some(ref mut current_task) = *current_task {
-                            if let Some(ref mut task) = task {
+                        if let Some(ref mut task) = task {
+                            if let Some(ref mut current_task) = *current_task {
                                 std::mem::swap(task, current_task);
                                 continue;
                             }
-                        } else if current_task.is_none() {
-                            if let Some(task) = task {
-                                let _ = current_task.insert(task);
-                                continue;
-                            }
                         }
-                                            
                     }
                     Err(TryLockError::WouldBlock) => {
                         if let Some(task) = task {
@@ -214,71 +259,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         return Ok(())
                     }
                 };
-                let Some(current_task) = current_tasks.get(i).clone() else {
-                    continue;
-                };
-                // Here false is back and true is front
-                let mut back_or_front = true;
-                match current_task.try_lock() {
-                    Ok(_) => {
-                        back_or_front = false;
-                    }
-                    Err(TryLockError::WouldBlock) => {
-
-                    }
-                    Err(x) => {
-                        eprintln!("{:?}", x);
-                        return Ok(())
-                    }
-                };
-                if back_or_front {
-                    if let Some(task) = task {
-                        tasks.push_front(task);
-                    }
-                } else {
-                    match current_tasks[i].try_lock() {
-                        Ok(mut current_task) => {
-                            if let Some(ref mut task) = task {
-                                if let Some(ref mut current_task) = *current_task {
-                                    std::mem::swap(task, current_task);
-                                    continue;
-                                }
-                            }
-                        }
-                        Err(TryLockError::WouldBlock) => {
-                            if let Some(task) = task {
-                                tasks.push_front(task);
-                                continue;
-                            }
-                        }
-                        Err(x) => {
-                            eprintln!("{:?}", x);
-                            return Ok(())
-                        }
-                    };
-                    if let Some(task) = task {
-                        tasks.push_back(task);
-                    }
-                }
-            };
-            
-            let mut indices = Vec::new();
-            for (i, task) in current_tasks.iter().enumerate() {
-                if let Ok(task) = task.try_lock() {
-                    if let None = task.as_ref() {
-                        indices.push(i);
-                    }
+                if let Some(task) = task {
+                    tasks.push_back(task);
                 }
             }
-            for i in indices.into_iter().rev() {
-                current_tasks.remove(i);
+        };
+        
+        let mut indices = Vec::new();
+        for (i, task) in current_tasks.iter().enumerate() {
+            if let Ok(task) = task.try_lock() {
+                if let None = task.as_ref() {
+                    indices.push(i);
+                }
             }
-            if current_tasks.len() == 0 && tasks.len() == 0 {
-                break;
-            }
-
-            drop(guard);
         }
+        for i in indices.into_iter().rev() {
+            current_tasks.remove(i);
+        }
+        if current_tasks.len() == 0 && tasks.len() == 0 {
+            break;
+        }
+        drop(locked_locks);
+
         start_time = std::time::Instant::now();
         start = false;
         
