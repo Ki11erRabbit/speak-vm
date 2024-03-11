@@ -5,7 +5,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex, RwLock, TryLockError};
 
 use object::{init_stack, Class, ContextData, Method};
-use vm::bytecode::Literal;
+use vm::bytecode::{Literal, SpecialInstruction};
 use object::ObjectBox;
 
 use crate::vm::bytecode::ByteCode;
@@ -64,8 +64,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ByteCode::PushLiteral(Literal::String(String::from("Logger"))),
         ByteCode::SendMsg(1,String::from("new")),
         ByteCode::SendMsg(0,String::from("init")),
-        ByteCode::PushLiteral(Literal::String(String::from("Hello World"))),
+        ByteCode::PushLiteral(Literal::String(String::from("Hello World 1"))),
         ByteCode::SendMsg(1,String::from("println")),
+        ByteCode::SpecialInstruction(SpecialInstruction::BackSkip(2)),
     ];
     let mut methods = HashMap::new();
     methods.insert("main".to_string(), Arc::new(Method::BytecodeMethod{ block: object::create_block(bytecode) }));
@@ -75,15 +76,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     object::add_class("Main", class);
 
 
-    let instructions = vec![
-        ByteCode::StoreTemp(3),
-        ByteCode::AccessTemp(3),
-        ByteCode::PushLiteral(Literal::String(String::from("hello_world"))),
-        ByteCode::SendMsg(1,String::from("new")),
-        ByteCode::SendMsg(0,String::from("init")),
-        ByteCode::SendMsg(0,String::from("println")),
-        ByteCode::Halt
-    ];
+    let core_count = if let Some(count) = args.thread_count {
+        count
+    } else {
+        num_cpus::get()
+    };
     
     if args.server_mode {
         unimplemented!()
@@ -109,12 +106,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     let mut tasks: VecDeque<Interpreter> = VecDeque::new();
-    let current_tasks: Arc<RwLock<Vec<Arc<Mutex<Option<Interpreter>>>>>> = Arc::new(RwLock::new(Vec::new()));
+    let current_tasks: Arc<RwLock<Vec<Arc<Mutex<Option<Interpreter>>>>>> = Arc::new(RwLock::new(Vec::with_capacity(core_count)));
     let mut next_task = 0;
 
     let mut handles = Vec::new();
     let mut locks = Vec::new();
-    for _ in 0..4 {
+    for _ in 0..core_count {
         let lock = Arc::new(Mutex::new(()));
         let current_tasks = current_tasks.clone();
         locks.push(lock.clone());
@@ -130,18 +127,124 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let (sender, receiver) = std::sync::mpsc::channel();
-    let code = context.detach_code().expect("no main method");
-    sender.send(code.clone()).unwrap();
-    sender.send(code.clone()).unwrap();
-    sender.send(code.clone()).unwrap();
-    sender.send(code.clone()).unwrap();
-    sender.send(code.clone()).unwrap();
-    sender.send(code.clone()).unwrap();
-    sender.send(code.clone()).unwrap();
-    sender.send(code.clone()).unwrap();
-    sender.send(code.clone()).unwrap();
-    sender.send(code.clone()).unwrap();
-    sender.send(code.clone()).unwrap();
+    sender.send(context).unwrap();
+    
+    let bytecode = vec![
+        //ByteCode::AccessTemp(3),
+        ByteCode::PushLiteral(Literal::String(String::from("Logger"))),
+        ByteCode::SendMsg(1,String::from("new")),
+        ByteCode::SendMsg(0,String::from("init")),
+        ByteCode::PushLiteral(Literal::String(String::from("Hello World 2"))),
+        ByteCode::SendMsg(1,String::from("println")),
+        ByteCode::SpecialInstruction(SpecialInstruction::BackSkip(2)),
+    ];
+    let mut context = ContextData::new(init_stack());
+    context.attach_code(bytecode.into());
+    sender.send(context).unwrap();
+    
+    let bytecode = vec![
+        //ByteCode::AccessTemp(3),
+        ByteCode::PushLiteral(Literal::String(String::from("Logger"))),
+        ByteCode::SendMsg(1,String::from("new")),
+        ByteCode::SendMsg(0,String::from("init")),
+        ByteCode::PushLiteral(Literal::String(String::from("Hello World 3"))),
+        ByteCode::SendMsg(1,String::from("println")),
+        ByteCode::SpecialInstruction(SpecialInstruction::BackSkip(2)),
+    ];
+    let mut context = ContextData::new(init_stack());
+    context.attach_code(bytecode.into());
+    sender.send(context).unwrap();
+    
+    let bytecode = vec![
+        //ByteCode::AccessTemp(3),
+        ByteCode::PushLiteral(Literal::String(String::from("Logger"))),
+        ByteCode::SendMsg(1,String::from("new")),
+        ByteCode::SendMsg(0,String::from("init")),
+        ByteCode::PushLiteral(Literal::String(String::from("Hello World 4"))),
+        ByteCode::SendMsg(1,String::from("println")),
+        ByteCode::SpecialInstruction(SpecialInstruction::BackSkip(2)),
+    ];
+    let mut context = ContextData::new(init_stack());
+    context.attach_code(bytecode.into());
+    sender.send(context).unwrap();
+    
+    let bytecode = vec![
+        //ByteCode::AccessTemp(3),
+        ByteCode::PushLiteral(Literal::String(String::from("Logger"))),
+        ByteCode::SendMsg(1,String::from("new")),
+        ByteCode::SendMsg(0,String::from("init")),
+        ByteCode::PushLiteral(Literal::String(String::from("Hello World 5"))),
+        ByteCode::SendMsg(1,String::from("println")),
+        ByteCode::SpecialInstruction(SpecialInstruction::BackSkip(2)),
+    ];
+    let mut context = ContextData::new(init_stack());
+    context.attach_code(bytecode.into());
+    sender.send(context).unwrap();
+    
+    let bytecode = vec![
+        //ByteCode::AccessTemp(3),
+        ByteCode::PushLiteral(Literal::String(String::from("Logger"))),
+        ByteCode::SendMsg(1,String::from("new")),
+        ByteCode::SendMsg(0,String::from("init")),
+        ByteCode::PushLiteral(Literal::String(String::from("Hello World 6"))),
+        ByteCode::SendMsg(1,String::from("println")),
+        ByteCode::SpecialInstruction(SpecialInstruction::BackSkip(2)),
+    ];
+    let mut context = ContextData::new(init_stack());
+    context.attach_code(bytecode.into());
+    sender.send(context).unwrap();
+    
+    let bytecode = vec![
+        //ByteCode::AccessTemp(3),
+        ByteCode::PushLiteral(Literal::String(String::from("Logger"))),
+        ByteCode::SendMsg(1,String::from("new")),
+        ByteCode::SendMsg(0,String::from("init")),
+        ByteCode::PushLiteral(Literal::String(String::from("Hello World 7"))),
+        ByteCode::SendMsg(1,String::from("println")),
+        ByteCode::SpecialInstruction(SpecialInstruction::BackSkip(2)),
+    ];
+    let mut context = ContextData::new(init_stack());
+    context.attach_code(bytecode.into());
+    sender.send(context).unwrap();
+    
+    let bytecode = vec![
+        //ByteCode::AccessTemp(3),
+        ByteCode::PushLiteral(Literal::String(String::from("Logger"))),
+        ByteCode::SendMsg(1,String::from("new")),
+        ByteCode::SendMsg(0,String::from("init")),
+        ByteCode::PushLiteral(Literal::String(String::from("Hello World 8"))),
+        ByteCode::SendMsg(1,String::from("println")),
+        ByteCode::SpecialInstruction(SpecialInstruction::BackSkip(2)),
+    ];
+    let mut context = ContextData::new(init_stack());
+    context.attach_code(bytecode.into());
+    sender.send(context).unwrap();
+    
+    let bytecode = vec![
+        //ByteCode::AccessTemp(3),
+        ByteCode::PushLiteral(Literal::String(String::from("Logger"))),
+        ByteCode::SendMsg(1,String::from("new")),
+        ByteCode::SendMsg(0,String::from("init")),
+        ByteCode::PushLiteral(Literal::String(String::from("Hello World 9"))),
+        ByteCode::SendMsg(1,String::from("println")),
+        ByteCode::SpecialInstruction(SpecialInstruction::BackSkip(2)),
+    ];
+    let mut context = ContextData::new(init_stack());
+    context.attach_code(bytecode.into());
+    sender.send(context).unwrap();
+    
+    let bytecode = vec![
+        //ByteCode::AccessTemp(3),
+        ByteCode::PushLiteral(Literal::String(String::from("Logger"))),
+        ByteCode::SendMsg(1,String::from("new")),
+        ByteCode::SendMsg(0,String::from("init")),
+        ByteCode::PushLiteral(Literal::String(String::from("Hello World 10"))),
+        ByteCode::SendMsg(1,String::from("println")),
+        ByteCode::SpecialInstruction(SpecialInstruction::BackSkip(2)),
+    ];
+    let mut context = ContextData::new(init_stack());
+    context.attach_code(bytecode.into());
+    sender.send(context).unwrap();
     let mut start_time = std::time::Instant::now();
 
     let mut start = true;
@@ -149,9 +252,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     'main: loop {
         loop {
             match receiver.try_recv() {
-                Ok(instructions) => {
-                    let mut context = ContextData::new(init_stack());
-                    context.attach_code(instructions);
+                Ok(context) => {
                     let interpreter = Interpreter::new(context);
                     tasks.push_back(interpreter);
                     /*let lock = lock.clone();
@@ -175,9 +276,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if start_time.elapsed().as_millis() < 100 && !start {
             continue;
         }
-        //eprintln!("Context Switch");
         
         let locked_locks = locks.iter().map(|x| x.lock().unwrap()).collect::<Vec<_>>();
+        
+        //println!("Context Switch");
+        //println!("Tasks: {}", tasks.len());
 
         let mut current_tasks = current_tasks.write().expect("Could not write to current tasks");
         for i in 0..next_task {
@@ -196,6 +299,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if let Some(ref mut current_task) = *current_task {
                         if let Some(ref mut task) = task {
                             std::mem::swap(task, current_task);
+                        }
+                        if let Some(task) = task {
+                            tasks.push_back(task);
                             continue;
                         }
                     } else if current_task.is_none() {
@@ -244,8 +350,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         if let Some(ref mut task) = task {
                             if let Some(ref mut current_task) = *current_task {
                                 std::mem::swap(task, current_task);
-                                continue;
                             }
+                        }
+                        if let Some(task) = task {
+                            tasks.push_back(task);
+                            continue;
                         }
                     }
                     Err(TryLockError::WouldBlock) => {
