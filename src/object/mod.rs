@@ -628,6 +628,7 @@ impl ObjectFactory {
         context.parents.insert(String::from("F32"), String::from("Float"));
         context.parents.insert(String::from("Boolean"), String::from("Object"));
         context.parents.insert(String::from("Vector"), String::from("Object"));
+        context.parents.insert(String::from("System"), String::from("Object"));
 
 
         context
@@ -733,6 +734,9 @@ impl ObjectFactory {
     fn create_vector(&self, vector: Vec<ObjectBox>) -> ObjectBox {
         vector::VectorObject::make_object(self.create_base_object(), vector.into())
     }
+    fn create_system(&self) -> ObjectBox {
+        system::System::make_object(self.create_base_object())
+    }
 
     fn make_parent(&self, name: &str) -> Result<ObjectBox, Fault> {
         self.create_object(self.parents.get(name).ok_or(Fault::InvalidType(format!("object not found: {}", name)))?, &[])
@@ -773,6 +777,7 @@ impl ObjectFactory {
                 let vector = Vec::new();
                 Ok(self.create_vector(vector))
             },
+            "System" => Ok(self.create_system()),
             x => {
                 let object = ObjectStruct::new(self.get_class(x), Some(self.make_parent(x)?));
                 Ok(object)
@@ -962,6 +967,14 @@ pub fn create_vector(vector: Vec<ObjectBox>) -> ObjectBox {
     object.initialize(vec![], VTable::new_empty());
     drop(object);
     vector
+}
+
+pub fn create_system() -> ObjectBox {
+    let system = get_factory().create_system();
+    let mut object = system.borrow_mut();
+    object.initialize(vec![], VTable::new_empty());
+    drop(object);
+    system
 }
 
 
