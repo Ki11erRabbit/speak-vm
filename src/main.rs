@@ -4,6 +4,7 @@ pub mod vm;
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex, RwLock, TryLockError};
 
+use lazy_static::lazy_static;
 use object::{init_stack, Class, ContextData, Method};
 use vm::bytecode::{Literal, SpecialInstruction};
 use object::ObjectBox;
@@ -11,6 +12,10 @@ use object::ObjectBox;
 use crate::vm::bytecode::ByteCode;
 use crate::vm::interpreter::Interpreter;
 use clap::Parser;
+
+lazy_static! {
+    pub static ref SEND_CHANNEL: Mutex<Option<std::sync::mpsc::Sender<ContextData>>> = Mutex::new(None);
+}
 
 
 #[derive(Parser, Debug)]
@@ -128,6 +133,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (sender, receiver) = std::sync::mpsc::channel();
     sender.send(context).unwrap();
+
     
     let bytecode = vec![
         //ByteCode::AccessTemp(3),
@@ -245,6 +251,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut context = ContextData::new(init_stack());
     context.attach_code(bytecode.into());
     sender.send(context).unwrap();
+    **SEND_CHANNEL.lock().as_mut().unwrap() = Some(sender);
     let mut start_time = std::time::Instant::now();
 
     let mut start = true;

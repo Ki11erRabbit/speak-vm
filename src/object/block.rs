@@ -17,7 +17,7 @@ pub struct Block {
     super_object: ObjectBox,
     vtable: VTable,
     pub bytecode: Arc<Vec<ByteCode>>,
-    captures: Vec<ObjectBox>,
+    pub captures: Vec<ObjectBox>,
 }
 
 
@@ -71,6 +71,10 @@ impl Object for Block {
 fn value(object: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
     let object = object.borrow();
     let object = object.downcast_ref::<Block>().expect("Expected block");
+    let start_index = context.arg_count;
+    for (i, capture) in object.captures.iter().enumerate() {
+        context.set_argument(i + start_index, capture.clone())
+    }
     let _ = object.call(context);
     Ok(None)
 }

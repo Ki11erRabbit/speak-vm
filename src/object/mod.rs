@@ -4,6 +4,7 @@ pub mod block;
 pub mod string;
 pub mod log;
 pub mod vector;
+pub mod system;
 
 use lazy_static::lazy_static;
 use std::sync::{Arc, Mutex, MutexGuard};
