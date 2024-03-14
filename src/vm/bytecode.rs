@@ -1,3 +1,10 @@
+//! # How to write a compiler to this bytecode;
+//! ## Things to keep track of
+//! - The position of the context object at the start of each stack frame.
+//! - The position of temporary variables that are stored globally.
+//! - The positions of the arguments on the runtime stack.
+//! - How Blocks' (closures) captures are put after the arguments in the temporary variables.
+//! - The importance of running the init message on an object before it is used.
 use super::binary::ToBinary;
 
 

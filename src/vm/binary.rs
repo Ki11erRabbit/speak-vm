@@ -1,15 +1,24 @@
 //! The binary format is as follows:
 //! header: "SPK" version (u8, u8, u8)
-//! class_table: length (u64), [class_table_entry]
-//! string_table: length (u64), [string_table_entry]
-//! block_table: length (u64), [block_table_entry]
+//!
+//! class_table: length (u64), \[class_table_entry\]
+//!
+//! string_table: length (u64), \[string_table_entry\]
+//!
+//! block_table: length (u64), \[block_table_entry\]
 //! 
-//! class_table_entry: name_index (u64), flag (u8), parent_index (?u64), method_count (u64), [method_entry], override_count (u64), [override_entry]
+//!
+//! class_table_entry: name_index (u64), flag (u8), parent_index (?u64), method_count (u64), \[method_entry\], override_count (u64), \[override_entry\]
+//!
 //! method_entry: name_index (u64), bytecode_entry
-//! bytecode_entry: length (u64), [bytecode]
-//! override_entry: length (u64), depth (u64), [method_entry]
+//!
+//! bytecode_entry: length (u64), \[bytecode\]
+//!
+//! override_entry: length (u64), depth (u64), \[method_entry\]
+//!
 //! string_table_entry: length (u64), string (utf-8)
-//! block_table_entry: length (u64), [bytecode_entry]
+//!
+//! block_table_entry: length (u64), \[bytecode_entry\]
 
 use std::collections::{BTreeMap, HashMap};
 use std::cell::RefCell;
