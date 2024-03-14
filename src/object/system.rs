@@ -1,11 +1,9 @@
 use std::sync::Arc;
 use std::collections::HashMap;
 use crate::object::{block::Block, ContextData};
-use crate::object::string::StringObject;
 use crate::object::Method;
 use crate::SEND_CHANNEL;
 
-use super::stack::Stack;
 use super::{Fault, Object, ObjectBox};
 use crate::object::VTable;
 
@@ -27,8 +25,6 @@ impl System {
     pub fn make_vtable() -> VTable {
         let mut methods = HashMap::new();
         methods.insert("spawn".to_string(), Arc::new(Method::RustMethod { fun: Box::new(system_spawn)}));
-        methods.insert("stack".to_string(), Arc::new(Method::RustMethod { fun: Box::new(system_get_stack)}));
-        methods.insert("current_frame".to_string(), Arc::new(Method::RustMethod { fun: Box::new(system_get_current_frame)}));
         VTable::new(methods)
     }
 }
@@ -85,16 +81,3 @@ fn system_spawn(_: ObjectBox, context: &mut ContextData) -> Result<Option<Object
     Ok(None)
 }
 
-fn system_get_stack(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    let stack = context.stack.clone();
-    Ok(Some(stack))
-}
-
-fn system_get_current_frame(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
-    let stack = context.stack.clone();
-    let stack = stack.borrow();
-    let stack = stack.downcast_ref::<Stack>();
-    let stack = stack.expect("Expected stack");
-    let frame = stack.index(0).unwrap();
-    Ok(Some(frame))
-}

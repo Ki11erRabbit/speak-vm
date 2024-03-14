@@ -131,29 +131,30 @@ fn parse_bytecode_entry(input: &[u8]) -> IResult<&[u8], ProtoByteCode> {
         }
         5 => {
             let (input, idx) = number::complete::le_u64(input)?;
-            Ok((input, ProtoByteCode::AccessClass(idx as usize)))
+            Ok((input, ProtoByteCode::StoreField(idx as usize)))
         }
         6 => {
             let (input, idx) = number::complete::le_u64(input)?;
-            Ok((input, ProtoByteCode::StoreField(idx as usize)))
-        }
-        7 => {
-            let (input, idx) = number::complete::le_u64(input)?;
             Ok((input, ProtoByteCode::StoreTemp(idx as usize)))
         }
-        8 => {
+        7 => {
             let (input, arg) = number::complete::le_u64(input)?;
             let (input, msg) = number::complete::le_u64(input)?;
             Ok((input, ProtoByteCode::SendMsg(arg as usize, msg as usize)))
         }
-        9 => {
+        8 => {
             let (input, arg) = number::complete::le_u64(input)?;
             let (input, msg) = number::complete::le_u64(input)?;
             Ok((input, ProtoByteCode::SendSuperMsg(arg as usize, msg as usize)))
         }
-        10 => {
+        9 => {
             let (input, instr) = parse_special_instruction(input)?;
             Ok((input, ProtoByteCode::SpecialInstruction(instr)))
+        }
+        10 => {
+            let (input, frame) = number::complete::le_u64(input)?;
+            let (input, idx) = number::complete::le_u64(input)?;
+            Ok((input, ProtoByteCode::GetStack(frame as usize, idx as usize)))
         }
         _ => unreachable!("Unknown bytecode")
     }
@@ -225,6 +226,31 @@ fn parse_special_instruction(input: &[u8]) -> IResult<&[u8], ProtoSpecialInstruc
         0 => Ok((input, ProtoSpecialInstruction::DupStack)),
         1 => Ok((input, ProtoSpecialInstruction::DiscardStack)),
         2 => Ok((input, ProtoSpecialInstruction::ReturnStack)),
+        3 => Ok((input, ProtoSpecialInstruction::Return)),
+        4 => {
+            let (input, idx) = number::complete::le_u64(input)?;
+            Ok((input, ProtoSpecialInstruction::PopTrueSkip(idx as usize)))
+        }
+        5 => {
+            let (input, idx) = number::complete::le_u64(input)?;
+            Ok((input, ProtoSpecialInstruction::PopFalseSkip(idx as usize)))
+        }
+        6 => {
+            let (input, idx) = number::complete::le_u64(input)?;
+            Ok((input, ProtoSpecialInstruction::PopTrueBackSkip(idx as usize)))
+        }
+        7 => {
+            let (input, idx) = number::complete::le_u64(input)?;
+            Ok((input, ProtoSpecialInstruction::PopFalseBackSkip(idx as usize)))
+        }
+        8 => {
+            let (input, idx) = number::complete::le_u64(input)?;
+            Ok((input, ProtoSpecialInstruction::Skip(idx as usize)))
+        }
+        9 => {
+            let (input, idx) = number::complete::le_u64(input)?;
+            Ok((input, ProtoSpecialInstruction::BackSkip(idx as usize)))
+        }
         _ => unreachable!("Unknown special instruction")
     }
 }
@@ -390,12 +416,13 @@ pub enum ProtoByteCode {
     AccessField(usize),
     AccessTemp(usize),
     PushLiteral(ProtoLiteral),
-    AccessClass(usize),
     StoreField(usize),
     StoreTemp(usize),
     SendMsg(usize, usize),
     SendSuperMsg(usize, usize),
     SpecialInstruction(ProtoSpecialInstruction),
+    GetStack(usize, usize),
+
 }
 
 impl ProtoByteCode {
@@ -406,12 +433,12 @@ impl ProtoByteCode {
             ProtoByteCode::AccessField(idx) => ByteCode::AccessField(idx),
             ProtoByteCode::AccessTemp(idx) => ByteCode::AccessTemp(idx),
             ProtoByteCode::PushLiteral(lit) => ByteCode::PushLiteral(lit.into_literal(string_table, block_table)),
-            ProtoByteCode::AccessClass(idx) => ByteCode::AccessClass(string_table.strings.get(&idx).expect("Expected string").clone()),
             ProtoByteCode::StoreField(idx) => ByteCode::StoreField(idx),
             ProtoByteCode::StoreTemp(idx) => ByteCode::StoreTemp(idx),
             ProtoByteCode::SendMsg(arg, msg) => ByteCode::SendMsg(arg, string_table.strings.get(&msg).expect("Expected string").clone()),
             ProtoByteCode::SendSuperMsg(arg, msg) => ByteCode::SendSuperMsg(arg, string_table.strings.get(&msg).expect("Expected string").clone()),
             ProtoByteCode::SpecialInstruction(inst) => ByteCode::SpecialInstruction(inst.into()),
+            ProtoByteCode::GetStack(frame, idx) => ByteCode::GetStack(frame, idx),
         }
     }
 }
@@ -434,31 +461,32 @@ impl ToBinary for ProtoByteCode {
                 binary.push(4);
                 binary.extend_from_slice(lit.to_binary(None).as_slice());
             }
-            ProtoByteCode::AccessClass(idx) => {
+            ProtoByteCode::StoreField(idx) => {
                 binary.push(5);
                 binary.extend_from_slice(idx.to_binary(None).as_slice());
             }
-            ProtoByteCode::StoreField(idx) => {
+            ProtoByteCode::StoreTemp(idx) => {
                 binary.push(6);
                 binary.extend_from_slice(idx.to_binary(None).as_slice());
             }
-            ProtoByteCode::StoreTemp(idx) => {
-                binary.push(7);
-                binary.extend_from_slice(idx.to_binary(None).as_slice());
-            }
             ProtoByteCode::SendMsg(arg, msg) => {
-                binary.push(8);
+                binary.push(7);
                 binary.extend_from_slice(arg.to_binary(None).as_slice());
                 binary.extend_from_slice(msg.to_binary(None).as_slice());
             }
             ProtoByteCode::SendSuperMsg(arg, msg) => {
-                binary.push(9);
+                binary.push(8);
                 binary.extend_from_slice(arg.to_binary(None).as_slice());
                 binary.extend_from_slice(msg.to_binary(None).as_slice());
             }
             ProtoByteCode::SpecialInstruction(inst) => {
-                binary.push(10);
+                binary.push(9);
                 binary.extend_from_slice(inst.to_binary(None).as_slice());
+            }
+            ProtoByteCode::GetStack(frame, idx) => {
+                binary.push(10);
+                binary.extend_from_slice(frame.to_binary(None).as_slice());
+                binary.extend_from_slice(idx.to_binary(None).as_slice());
             }
         }
         binary
@@ -469,6 +497,19 @@ pub enum ProtoSpecialInstruction {
     DupStack,
     DiscardStack,
     ReturnStack,
+    Return,
+    PopTrueSkip(usize),
+    /// Pop the top of the stack, if false skip the next n instructions
+    PopFalseSkip(usize),
+    /// Pop the top of the stack, if true go back n instructions
+    PopTrueBackSkip(usize),
+    /// Pop the top of the stack, if false go back n instructions
+    PopFalseBackSkip(usize),
+    /// Skip the next n instructions
+    Skip(usize),
+    /// Go back n instructions
+    BackSkip(usize),
+
 }
 
 impl Into<crate::vm::bytecode::SpecialInstruction> for ProtoSpecialInstruction {
@@ -477,6 +518,14 @@ impl Into<crate::vm::bytecode::SpecialInstruction> for ProtoSpecialInstruction {
             ProtoSpecialInstruction::DupStack => crate::vm::bytecode::SpecialInstruction::DupStack,
             ProtoSpecialInstruction::DiscardStack => crate::vm::bytecode::SpecialInstruction::DiscardStack,
             ProtoSpecialInstruction::ReturnStack => crate::vm::bytecode::SpecialInstruction::ReturnStack,
+            ProtoSpecialInstruction::Return => crate::vm::bytecode::SpecialInstruction::Return,
+            ProtoSpecialInstruction::PopTrueSkip(n) => crate::vm::bytecode::SpecialInstruction::PopTrueSkip(n),
+            ProtoSpecialInstruction::PopFalseSkip(n) => crate::vm::bytecode::SpecialInstruction::PopFalseSkip(n),
+            ProtoSpecialInstruction::PopTrueBackSkip(n) => crate::vm::bytecode::SpecialInstruction::PopTrueBackSkip(n),
+            ProtoSpecialInstruction::PopFalseBackSkip(n) => crate::vm::bytecode::SpecialInstruction::PopFalseBackSkip(n),
+            ProtoSpecialInstruction::Skip(n) => crate::vm::bytecode::SpecialInstruction::Skip(n),
+            ProtoSpecialInstruction::BackSkip(n) => crate::vm::bytecode::SpecialInstruction::BackSkip(n),
+                    
         }
     }
 }
@@ -487,6 +536,37 @@ impl ToBinary for ProtoSpecialInstruction {
             ProtoSpecialInstruction::DupStack => vec![0],
             ProtoSpecialInstruction::DiscardStack => vec![1],
             ProtoSpecialInstruction::ReturnStack => vec![2],
+            ProtoSpecialInstruction::Return => vec![3],
+            ProtoSpecialInstruction::PopTrueSkip(n) => {
+                let mut binary = vec![4];
+                binary.extend_from_slice(n.to_binary(None).as_slice());
+                binary
+            }
+            ProtoSpecialInstruction::PopFalseSkip(n) => {
+                let mut binary = vec![5];
+                binary.extend_from_slice(n.to_binary(None).as_slice());
+                binary
+            }
+            ProtoSpecialInstruction::PopTrueBackSkip(n) => {
+                let mut binary = vec![6];
+                binary.extend_from_slice(n.to_binary(None).as_slice());
+                binary
+            }
+            ProtoSpecialInstruction::PopFalseBackSkip(n) => {
+                let mut binary = vec![7];
+                binary.extend_from_slice(n.to_binary(None).as_slice());
+                binary
+            }
+            ProtoSpecialInstruction::Skip(n) => {
+                let mut binary = vec![8];
+                binary.extend_from_slice(n.to_binary(None).as_slice());
+                binary
+            }
+            ProtoSpecialInstruction::BackSkip(n) => {
+                let mut binary = vec![9];
+                binary.extend_from_slice(n.to_binary(None).as_slice());
+                binary
+            }
         }
     }
 }

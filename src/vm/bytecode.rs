@@ -11,20 +11,35 @@ use super::binary::ToBinary;
 
 #[derive(Clone)]
 pub enum ByteCode {
+    /// Halt the current execution
     Halt,
+    /// Do nothing
     NoOp,
+    /// Access a field of the object at the top of the stack and push it to the stack
     AccessField(usize),
+    /// Access a temporary variable and push it to the stack
     AccessTemp(usize),
+    /// Push a literal to the stack
     PushLiteral(Literal),
-    AccessClass(String),
+    /// Store the top of the stack in a field of the object
     StoreField(usize),
+    /// Store the top of the stack in a temporary variable
     StoreTemp(usize),
     /// Send a message to an object
-    /// The first usize is the number of arguments to send
-    /// The second usize is the index of the message to send
+    /// The usize is the number of arguments to send
+    /// The string is the name of the message to send
     SendMsg(usize, String),
+    /// Send a message to the super object
+    /// The usize is the number of arguments to send
+    /// The string is the name of the message to send
     SendSuperMsg(usize, String),
+    /// Perform a special instruction
     SpecialInstruction(SpecialInstruction),
+    /// Get from the current runtime stack
+    /// The first usize is the index of the stack frame
+    /// The second usize is the index of the value in the stack frame
+    /// Both are 0-indexed from the top of the stack
+    GetStack(usize, usize)
 }
 
 
@@ -49,56 +64,67 @@ impl ToBinary for ByteCode {
                 binary.extend(lit.to_binary(Some(string_table)));
                 binary
             },
-            ByteCode::AccessClass(name) => {
-                let idx = string_table.add_string(name.clone());
+            ByteCode::StoreField(idx) => {
                 let mut binary = vec![5];
                 binary.extend(idx.to_binary(None));
                 binary
             },
-            ByteCode::StoreField(idx) => {
-                let mut binary = vec![6];
-                binary.extend(idx.to_binary(None));
-                binary
-            },
             ByteCode::StoreTemp(idx) => {
-                let mut binary = vec![7];
+                let mut binary = vec![6];
                 binary.extend(idx.to_binary(None));
                 binary
             },
             ByteCode::SendMsg(num_args, name) => {
                 let idx = string_table.add_string(name.clone());
-                let mut binary = vec![8];
+                let mut binary = vec![7];
                 binary.extend(num_args.to_binary(None));
                 binary.extend(idx.to_binary(None));
                 binary
             },
             ByteCode::SendSuperMsg(num_args, name) => {
                 let idx = string_table.add_string(name.clone());
-                let mut binary = vec![9];
+                let mut binary = vec![8];
                 binary.extend(num_args.to_binary(None));
                 binary.extend(idx.to_binary(None));
                 binary
             },
             ByteCode::SpecialInstruction(inst) => {
-                let mut binary = vec![10];
+                let mut binary = vec![9];
                 binary.extend(inst.to_binary(None));
                 binary
             },
+            ByteCode::GetStack(frame, idx) => {
+                let mut binary = vec![10];
+                binary.extend(frame.to_binary(None));
+                binary.extend(idx.to_binary(None));
+                binary
+            }
         }
     }
 }
 
 #[derive(Clone)]
 pub enum SpecialInstruction {
+    /// Duplicate the top of the stack
     DupStack,
+    /// Discard the top of the stack
     DiscardStack,
+    /// Return from a method and push the top of the stack to the
+    /// previous stack frame
     ReturnStack,
+    /// Return from a method
     Return,
+    /// Pop the top of the stack, if true skip the next n instructions
     PopTrueSkip(usize),
+    /// Pop the top of the stack, if false skip the next n instructions
     PopFalseSkip(usize),
+    /// Pop the top of the stack, if true go back n instructions
     PopTrueBackSkip(usize),
+    /// Pop the top of the stack, if false go back n instructions
     PopFalseBackSkip(usize),
+    /// Skip the next n instructions
     Skip(usize),
+    /// Go back n instructions
     BackSkip(usize),
 }
 

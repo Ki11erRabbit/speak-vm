@@ -14,6 +14,7 @@ use std::sync::RwLock;
 use crate::vm::bytecode::ByteCode;
 
 use self::log::Logger;
+use self::stack::Stack;
 use self::primitive::boolean::BooleanObject;
 use self::primitive::character::CharacterObject;
 use self::primitive::float::{F32Object, F64Object, FloatObject};
@@ -1091,6 +1092,8 @@ impl Context {
     pub fn make_vtable() -> VTable {
         let mut methods = HashMap::new();
         methods.insert("new".to_string(), Arc::new(Method::RustMethod { fun: Box::new(context_new) }));
+        methods.insert("stack".to_string(), Arc::new(Method::RustMethod { fun: Box::new(context_get_stack) }));
+        methods.insert("current_frame".to_string(), Arc::new(Method::RustMethod { fun: Box::new(context_get_current_frame) }));
         VTable::new(methods)
     }
 
@@ -1142,6 +1145,19 @@ fn context_new(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectB
     return create_object(&string.value, &context.arguments[1..]);
 }
 
+fn context_get_stack(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
+    let stack = context.stack.clone();
+    Ok(Some(stack))
+}
+
+fn context_get_current_frame(_: ObjectBox, context: &mut ContextData) -> Result<Option<ObjectBox>, Fault> {
+    let stack = context.stack.clone();
+    let stack = stack.borrow();
+    let stack = stack.downcast_ref::<Stack>();
+    let stack = stack.expect("Expected stack");
+    let frame = stack.index(0).unwrap();
+    Ok(Some(frame))
+}
 
 
 /*pub fn object_clone(object: ObjectBox) -> ObjectBox {
