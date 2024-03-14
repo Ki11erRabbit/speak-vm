@@ -77,14 +77,21 @@ impl ObjectBox {
 }
 
 
-
+/// This object defines the interface for all objects in the system.
+/// This is so that all objects are trait objects.
 pub trait Object: downcast_rs::Downcast {
-    //fn get_class(&self) -> Arc<Class>;
+    /// Get the vtable for the object
     fn get_vtable(&self) -> &VTable;
+    /// Get the super object
     fn get_super_object(&self) -> Option<ObjectBox>;
+    /// Get a field from the object
     fn get_field(&self, index: usize) -> Option<ObjectBox>;
+    /// Set a field in the object
     fn set_field(&mut self, index: usize, value: ObjectBox);
+    /// Get the size of the object. This might get removed in the future since it's not used.
     fn size(&self) -> Option<usize>;
+    /// Handle a message
+    /// This method gets a method from a vtable and if it doesn't find it, it looks in the super object.
     fn handle_message(&self, message: &Message) -> Option<Arc<Method>> {
         let mut method = self.get_vtable().get_method(&message.index);
         let mut object = self.get_super_object();
@@ -100,6 +107,9 @@ pub trait Object: downcast_rs::Downcast {
         }
         method
     }
+    /// This method processes a message and returns a method to call.
+    /// This is the method that gets called when a message is sent to an object.
+    /// The message is an object so it can be anything but we can assume it's a message.
     fn process_message(&self, message: ObjectBox) -> Option<Arc<Method>> {
         let message = message.borrow();
         if let Some(message) = (&*message).downcast_ref::<Message>() {
@@ -108,13 +118,20 @@ pub trait Object: downcast_rs::Downcast {
             panic!("Object::process_message: message is not a Message")
         }
     }
+    /// Duplicate the object
+    /// This method duplicates the object. This is used for cloning objects.
     fn duplicate(&self) -> ObjectBox;
+    /// Initialize the object
+    /// This method initializes the object. This should get called when the init message is passed
+    /// into the object.
     fn initialize(&mut self, arguments: Vec<ObjectBox>, vtable: VTable);
     
 }
 downcast_rs::impl_downcast!(Object);
 
-
+/// Nil
+/// the Nil object is a special object that represents nothing. It's used as the super object for
+/// the base object.
 pub struct Nil;
 
 impl Nil {
@@ -156,6 +173,9 @@ impl Object for Nil {
     }
 }
 
+/// BaseObject
+/// The BaseObject is the base object for all objects. It's the object that all objects inherit from.
+/// It contains the methods clone, equals, to_string, order, and init,
 pub struct BaseObject {
     super_object: Option<ObjectBox>,
     vtable: VTable,
@@ -290,7 +310,9 @@ fn obj_initalize(object: ObjectBox, context: &mut ContextData) -> Result<Option<
 }
 
 
-
+/// ObjectStruct
+/// This is the object that gets created when a class is created. It contains the vtable, fields, and
+/// super object.
 pub struct ObjectStruct {
     class: Option<Arc<Class>>,
     super_object: Option<ObjectBox>,
@@ -363,6 +385,9 @@ impl Object for ObjectStruct {
     }
 }
 
+/// VTable
+/// This is the vtable for an object. It contains a hashmap of methods.
+/// This is so that we can call methods on an object.
 #[derive(Clone, Debug)]
 pub struct VTable {
     table: HashMap<String, Arc<Method>>,
@@ -429,9 +454,14 @@ impl Class {
 /// Class
 /// A Class is a prototype for objects. It contains a vtable of methods and a parent class name.
 /// This is so that we can build the object.
+/// This is to be used for programmer created classes where we know nothing about them.
 pub struct Class {
+    /// The parent class name
     parent: Option<String>,
+    /// The vtable of methods
     methods: VTable,
+    /// The vtables of the parent classes
+    /// This is sorted by depth with the deepest at the start and the shallowest at the end.
     overrides: Vec<VTable>,
 }
 
@@ -478,7 +508,9 @@ impl crate::vm::binary::ToBinary for Class {
 
 unsafe impl Send for Method {}
 unsafe impl Sync for Method {}
-
+/// Method
+/// A method is a function that an object can respond to. It can be a Rust function or a Block
+/// object.
 pub enum Method {
     RustMethod {
         fun: Box<dyn Fn(ObjectBox, &mut ContextData) -> Result<Option<ObjectBox>, Fault>>,

@@ -163,7 +163,7 @@ impl Interpreter {
                 }
                 Method::BytecodeMethod { ref block } => {
                     context.push_frame(None);
-                    context.attach_receiver(object.clone());
+                    context.push(object);
                     let object = block.borrow();
                     let object = object.downcast_ref::<Block>().expect("Expected block");
                     let bytecode = object.bytecode.clone();
@@ -205,7 +205,7 @@ impl Interpreter {
                 }
                 Method::BytecodeMethod { ref block } => {
                     context.push_frame(None);
-                    context.attach_receiver(parent);
+                    context.push(parent);
                     let object = block.borrow();
                     let object = object.downcast_ref::<Block>().expect("Expected block");
                     let bytecode = object.bytecode.clone();
